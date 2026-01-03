@@ -1,0 +1,273 @@
+# Claude Code Skills
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A collection of Claude Code skills for documenting your coding journey and sharing insights authentically.
+
+**The workflow:** Session → Chapter → Social Posts
+
+Transform real coding sessions with Claude Code into book content and build an authentic developer audience.
+
+## Skills at a Glance
+
+| Skill | Description | Invoke with |
+|-------|-------------|-------------|
+| [code-journey-documenter](#code-journey-documenter) | Transform sessions into book chapters | `/code-journey-documenter` |
+| [social-media-poster](#social-media-poster) | Convert insights into social posts | `/social-media-poster` |
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/claude-code-skills.git
+   ```
+
+2. Add to your Claude Code skills directory:
+   ```bash
+   # Option 1: Symlink (recommended for development)
+   ln -s /path/to/claude-code-skills ~/.claude/skills/claude-code-skills
+
+   # Option 2: Copy
+   cp -r /path/to/claude-code-skills ~/.claude/skills/
+   ```
+
+3. Skills are now available in Claude Code via their slash commands.
+
+---
+
+## Code Journey Documenter
+
+Transform coding sessions into book-ready content for "Code With Claude: How AI Transformed the Way I Work (And Think)."
+
+### Core Philosophy
+
+Document mastery through three lenses:
+1. **Doing** — Actual coding work with Claude Code
+2. **Reflecting** — What worked, failed, surprised
+3. **Teaching** — Distillable patterns for readers
+
+### Session Tags
+
+Tag moments during your coding sessions for later processing:
+
+| Tag | Purpose |
+|-----|---------|
+| `[INSIGHT]` | Key learning moments—things that clicked |
+| `[FAILURE]` | What didn't work and why |
+| `[PATTERN]` | Recurring strategies worth teaching |
+| `[META]` | Reflections on the process itself |
+
+### Workflow
+
+```
+1. Pre-Session    → Define job, chapter target, learning objectives
+        ↓
+2. During-Session → Capture prompts, responses, iterations with tags
+        ↓
+3. Post-Session   → Run format_session.py to generate chapter draft
+        ↓
+4. Integration    → Map to book structure and expand
+```
+
+### Chapter Draft Structure
+
+Every chapter follows this arc:
+1. **Opening Hook** — Real-world problem in vivid terms
+2. **The Attempt** — Your approach with Claude Code
+3. **The Struggle** — Iterations, failures, pivots
+4. **The Breakthrough** — What worked and why
+5. **The Pattern** — Generalizable principle
+6. **Reader Exercise** — Try-it-yourself prompt
+
+### Script Usage
+
+```bash
+# Convert a session log into a chapter draft
+python code-journey-documenter/scripts/format_session.py session-2026-01-02.md > chapter-draft.md
+```
+
+The script extracts metadata, prompts, iterations, and tagged moments to generate a structured chapter draft.
+
+### Book Structure
+
+The book follows three parts:
+- **Part I: Foundations** — Setup, first encounters, mental models
+- **Part II: Real-World Mastery** — Job stories, one chapter per project
+- **Part III: Beyond** — Meta-reflections, advanced patterns
+
+See `code-journey-documenter/references/book-structure.md` for the complete outline.
+
+---
+
+## Social Media Poster
+
+Generate developer-focused social media content from coding sessions, book chapters, or standalone insights.
+
+### Core Philosophy
+
+> Posts should feel like a smart colleague sharing genuine learnings—not marketing.
+
+The goal is to document the journey publicly, building an audience through authenticity and useful insights.
+
+### Supported Platforms
+
+| Platform | Format | Character Limit | Hashtags |
+|----------|--------|-----------------|----------|
+| X/Twitter | Single post | 280 | No (discouraged) |
+| X/Twitter | Thread | 280 per tweet | No |
+| LinkedIn | Post | 3,000 | Yes (2-5 max) |
+
+### Voice Principles
+
+The voice guide emphasizes authenticity over marketing:
+
+1. **Practitioner, Not Pundit** — Write as someone who builds things
+2. **Specific Over General** — Concrete details beat abstract principles
+3. **Humble Confidence** — Share without excessive hedging or overclaiming
+4. **Show the Work** — The journey is more interesting than the destination
+5. **Conversational Technical** — Technical accuracy with accessible language
+
+#### Examples
+
+| Avoid | Aim For |
+|-------|---------|
+| "Developers should really pay more attention to error handling." | "Spent 3 hours on this bug. Here's what I learned." |
+| "Optimizing your build pipeline can really improve DX." | "Reduced build time from 4 min to 23 sec by switching to esbuild." |
+
+### Validation Script
+
+```bash
+# Validate a post before publishing
+python social-media-poster/scripts/validate_post.py post.md
+```
+
+The validator checks:
+- Platform-specific character limits
+- Hashtag compliance (LinkedIn yes, X no)
+- Cliché and engagement bait detection
+- Voice consistency with the style guide
+
+### Post Frontmatter
+
+```yaml
+---
+platform: x | x-thread | linkedin
+status: draft | ready | posted
+created: 2026-01-02
+posted: 2026-01-03
+session_source: path/to/source-session.md
+tags: [claude-code, debugging]
+---
+```
+
+---
+
+## Configuration
+
+Both skills reference external directories for output. Edit the `references/config.md` file in each skill to customize paths.
+
+### Default Paths
+
+| Skill | Output Directory |
+|-------|------------------|
+| code-journey-documenter | `~/dev/personal/books/code-with-claude` |
+| social-media-poster | `~/dev/personal/social-posts` |
+
+### Directory Structure (Book)
+
+```
+~/dev/personal/books/code-with-claude/
+├── chapters/
+│   ├── part-1/
+│   ├── part-2/
+│   └── part-3/
+├── sessions/          # Raw session logs
+├── code-examples/     # Referenced code snippets
+├── drafts/            # Work in progress
+└── assets/            # Images, diagrams
+```
+
+### Directory Structure (Social Posts)
+
+```
+~/dev/personal/social-posts/
+├── x/
+│   ├── drafts/
+│   ├── ready/
+│   ├── posted/
+│   └── threads/
+└── linkedin/
+    ├── drafts/
+    ├── ready/
+    └── posted/
+```
+
+---
+
+## Project Structure
+
+```
+claude-code-skills/
+├── README.md
+├── LICENSE
+├── .gitignore
+│
+├── code-journey-documenter/
+│   ├── SKILL.md                          # Skill definition
+│   ├── assets/
+│   │   └── chapter-templates/
+│   │       ├── foundation-chapter.md     # Part I template
+│   │       ├── job-story-chapter.md      # Part II template
+│   │       └── meta-chapter.md           # Part III template
+│   ├── references/
+│   │   ├── config.md                     # Path configuration
+│   │   ├── book-structure.md             # Complete book outline
+│   │   ├── pattern-library.md            # Collected patterns
+│   │   └── session-template.md           # Session logging format
+│   └── scripts/
+│       └── format_session.py             # Session → Chapter converter
+│
+└── social-media-poster/
+    ├── SKILL.md                          # Skill definition
+    ├── assets/
+    │   └── templates/
+    │       ├── x-single.md               # Single tweet template
+    │       ├── x-thread.md               # Thread template
+    │       └── linkedin.md               # LinkedIn post template
+    ├── references/
+    │   ├── config.md                     # Path configuration
+    │   ├── platform-x.md                 # X/Twitter best practices
+    │   ├── platform-linkedin.md          # LinkedIn best practices
+    │   └── voice-guide.md                # Writing style guide
+    └── scripts/
+        └── validate_post.py              # Post validator
+```
+
+---
+
+## Author
+
+**David Rutgos**
+- Email: [david.rutgos@gmail.com](mailto:david.rutgos@gmail.com)
+- LinkedIn: [linkedin.com/in/davidrutgos](https://www.linkedin.com/in/davidrutgos/)
+- X: [@DavidRutgos](https://x.com/DavidRutgos)
+
+---
+
+## Contributing
+
+Contributions are welcome! If you have ideas for improving these skills or want to share your own Claude Code workflows:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/improvement`)
+3. Commit your changes (`git commit -am 'Add improvement'`)
+4. Push to the branch (`git push origin feature/improvement`)
+5. Open a Pull Request
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+Copyright (c) 2026 My Partner Source
