@@ -286,8 +286,39 @@ Consult these helpful guides based on your skill's needs:
 
 - **Multi-step processes**: See references/workflows.md for sequential workflows and conditional logic
 - **Specific output formats or quality standards**: See references/output-patterns.md for template and example patterns
+- **Skills requiring credentials/API keys**: See references/credential-patterns.md for secure credential management
 
 These files contain established best practices for effective skill design.
+
+#### Credential Management (If Needed)
+
+**If your skill requires API credentials, passwords, or tokens:**
+
+Follow the pattern documented in `references/credential-patterns.md`. The recommended approach is:
+
+1. **Create `.credentials.example`** - Template file with placeholders (safe to commit)
+2. **Update `.gitignore`** - Add `.credentials` to prevent accidental commits
+3. **Separate configuration from credentials** - `config.md` for settings, `.credentials` for secrets
+4. **Support environment variables** - Read from `os.getenv()` in scripts
+5. **Document all auth methods** - Show users environment variables, credentials file, and CLI options
+
+**Example pattern:**
+```
+your-skill/
+├── references/
+│   ├── config.md                    # Non-sensitive config
+│   └── .credentials.example         # Template (checked in)
+└── scripts/
+    └── script.py                    # Reads from env vars
+```
+
+User creates locally:
+```bash
+cp .credentials.example .credentials  # User fills in real values
+source .credentials                   # Loads into environment
+```
+
+See `bitbucket-repo-lookup` skill as a complete reference implementation.
 
 #### Start with Reusable Skill Contents
 

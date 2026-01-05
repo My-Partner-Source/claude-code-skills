@@ -142,6 +142,12 @@ Reference docs are ideal for:
 - Information too lengthy for main SKILL.md
 - Content that's only needed for specific use cases
 
+---
+
+**NOTE:** If your skill requires credentials or API keys, see the skill-creator's
+`references/credential-patterns.md` for secure credential management patterns.
+Don't hardcode credentials - use `.credentials.example` + `.gitignore` pattern instead.
+
 ## Structure Suggestions
 
 ### API Reference Example
@@ -265,7 +271,8 @@ def init_skill(skill_name, path):
     print("\nNext steps:")
     print("1. Edit SKILL.md to complete the TODO items and update the description")
     print("2. Customize or delete the example files in scripts/, references/, and assets/")
-    print("3. Run the validator when ready to check the skill structure")
+    print("3. If your skill needs credentials/API keys, see skill-creator/references/credential-patterns.md")
+    print("4. Run the validator when ready to check the skill structure")
 
     return skill_dir
 
