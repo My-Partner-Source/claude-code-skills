@@ -2,52 +2,39 @@
 
 ## Authentication
 
-Configure your Bitbucket credentials below. **Do not commit this file with real credentials.**
+**Credentials are stored separately for security.**
 
-### Option 1: App Password (Recommended)
+This file contains non-sensitive configuration only. For credential setup, see `.credentials.example`.
 
-Create an app password in Bitbucket:
-1. Go to **Personal settings** → **App passwords**
-2. Click **Create app password**
-3. Give it a label (e.g., "claude-code-skill")
-4. Select permissions:
-   - `Repositories: Read` (required)
-   - `Repositories: Write` (only if you need to push)
-5. Copy the generated password
+### Recommended Setup
 
-```yaml
-auth:
-  method: app_password
-  username: your-bitbucket-username
-  app_password: your-app-password-here
-```
+1. Copy the credentials template:
+   ```bash
+   cp bitbucket-repo-lookup/references/.credentials.example bitbucket-repo-lookup/references/.credentials
+   ```
 
-### Option 2: Access Token
+2. Edit `.credentials` with your actual Bitbucket credentials
 
-For workspace-level access or CI/CD integration:
+3. Source the credentials file before running scripts:
+   ```bash
+   source bitbucket-repo-lookup/references/.credentials
+   ```
 
-```yaml
-auth:
-  method: access_token
-  token: your-access-token-here
-```
+### Alternative Methods
 
-### Option 3: Environment Variables
-
-For security, you can use environment variables instead of hardcoding:
-
-```yaml
-auth:
-  method: env
-  username_var: BITBUCKET_USERNAME
-  password_var: BITBUCKET_APP_PASSWORD
-```
-
-Then set in your shell:
+**Environment Variables (Cross-session)**
 ```bash
+# Add to your ~/.bashrc or ~/.zshrc
 export BITBUCKET_USERNAME="your-username"
 export BITBUCKET_APP_PASSWORD="your-app-password"
 ```
+
+**CLI Arguments (One-time use)**
+```bash
+python bitbucket-repo-lookup/scripts/bitbucket_api.py list --workspace WORKSPACE --username USER --password PASS
+```
+
+See `SKILL.md` for complete authentication documentation.
 
 ---
 

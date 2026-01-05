@@ -28,14 +28,40 @@ This skill bridges the gap between your Bitbucket cloud workspace and your local
 
 ## Quick Start
 
-### 1. Configure Authentication
+### 1. Set Up Credentials
 
-Edit `references/config.md` with your Bitbucket credentials:
+Choose one authentication method:
+
+**Option A: Credentials File (Recommended)**
+```bash
+# Copy the template
+cp bitbucket-repo-lookup/references/.credentials.example bitbucket-repo-lookup/references/.credentials
+
+# Edit .credentials with your actual Bitbucket credentials
+# Then source it before using the skill
+source bitbucket-repo-lookup/references/.credentials
+```
+
+**Option B: Environment Variables (Persistent)**
+```bash
+# Add to your ~/.bashrc or ~/.zshrc
+export BITBUCKET_USERNAME="your-username"
+export BITBUCKET_APP_PASSWORD="your-app-password"
+```
+
+**Option C: CLI Arguments (One-time use)**
+```bash
+# Provide credentials directly when running (not recommended for regular use)
+```
+
+### 2. Configure Workspace
+
+Edit `references/config.md` to set:
 - Workspace slug
-- App password (recommended) or access token
 - Default clone directory
+- Preferences (organize by project, filters, etc.)
 
-### 2. List Repositories
+### 3. List Repositories
 
 Ask Claude to list your repositories:
 ```
@@ -44,7 +70,7 @@ Ask Claude to list your repositories:
 "Find repositories containing 'api' in the name"
 ```
 
-### 3. Select and Clone
+### 4. Select and Clone
 
 After seeing the list, specify what to download:
 ```

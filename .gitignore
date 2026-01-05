@@ -50,3 +50,8 @@ out/
 # Draft/WIP content (uncomment if needed)
 # drafts/
 # wip/
+
+# Credentials (NEVER commit these)
+.credentials
+**/references/.credentials
+bitbucket-repo-lookup/references/.credentials

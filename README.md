@@ -181,18 +181,27 @@ Bridge the gap between your Bitbucket cloud workspace and local development envi
 
 ### Quick Start
 
-1. **Configure Authentication**
-   - Edit `bitbucket-repo-lookup/references/config.md` with your Bitbucket credentials
-   - Set workspace slug, app password, and default clone directory
+1. **Set Up Credentials**
+   ```bash
+   # Copy the credentials template
+   cp bitbucket-repo-lookup/references/.credentials.example bitbucket-repo-lookup/references/.credentials
 
-2. **List Repositories**
+   # Edit .credentials with your Bitbucket credentials
+   # Source before using
+   source bitbucket-repo-lookup/references/.credentials
+   ```
+
+2. **Configure Workspace**
+   - Edit `bitbucket-repo-lookup/references/config.md` to set workspace slug and clone directory
+
+3. **List Repositories**
    ```
    "List all repositories in my Bitbucket workspace"
    "Show me repos in the 'backend' project"
    "Find repositories containing 'api' in the name"
    ```
 
-3. **Clone Repositories**
+4. **Clone Repositories**
    ```
    "Clone repos 1, 3, and 5"
    "Download all of them"
@@ -211,10 +220,12 @@ Bridge the gap between your Bitbucket cloud workspace and local development envi
 
 ### Security Notes
 
-- **Never commit credentials** — Keep `config.md` in `.gitignore` if sharing
-- **Use App Passwords** — More secure than account passwords, can be revoked
-- **Minimal permissions** — Only request repository read access (sufficient for listing and cloning repositories)
-- **Token rotation** — Regularly rotate your access tokens
+- **Credentials stored separately** — Use `.credentials` file (not checked in) or environment variables
+- **Never commit credentials** — `.credentials` is in `.gitignore` to prevent accidental commits
+- **Template provided** — Copy `.credentials.example` to `.credentials` and fill in your values
+- **Use App Passwords** — More secure than account passwords, can be revoked independently
+- **Minimal permissions** — Only request repository read access (sufficient for listing and cloning)
+- **Token rotation** — Regularly rotate your access tokens for security
 
 See `bitbucket-repo-lookup/SKILL.md` for complete documentation.
 
