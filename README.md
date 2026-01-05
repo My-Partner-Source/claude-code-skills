@@ -213,7 +213,7 @@ Bridge the gap between your Bitbucket cloud workspace and local development envi
 
 - **Never commit credentials** — Keep `config.md` in `.gitignore` if sharing
 - **Use App Passwords** — More secure than account passwords, can be revoked
-- **Minimal permissions** — Only request read access for repository listing
+- **Minimal permissions** — Only request repository read access (sufficient for listing and cloning repositories)
 - **Token rotation** — Regularly rotate your access tokens
 
 See `bitbucket-repo-lookup/SKILL.md` for complete documentation.
