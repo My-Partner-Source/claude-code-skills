@@ -2,11 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A collection of Claude Code skills for documenting your coding journey and sharing insights authentically.
-
-**The workflow:** Session → Chapter → Social Posts
-
-Transform real coding sessions with Claude Code into book content and build an authentic developer audience.
+A collection of Claude Code skills to streamline your development workflow: document your coding journey, share insights authentically, and manage Bitbucket repositories directly from Claude Code.
 
 ## Skills at a Glance
 
@@ -14,12 +10,13 @@ Transform real coding sessions with Claude Code into book content and build an a
 |-------|-------------|-------------|
 | [code-journey-documenter](#code-journey-documenter) | Transform sessions into book chapters | `/code-journey-documenter` |
 | [social-media-poster](#social-media-poster) | Convert insights into social posts | `/social-media-poster` |
+| [bitbucket-repo-lookup](#bitbucket-repo-lookup) | List and clone Bitbucket repositories | `/bitbucket-repo-lookup` |
 
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/claude-code-skills.git
+   git clone https://github.com/My-Partner-Source/claude-code-skills.git
    ```
 
 2. Add to your Claude Code skills directory:
@@ -162,9 +159,70 @@ tags: [claude-code, debugging]
 
 ---
 
+## Bitbucket Repo Lookup
+
+Look up, list, and clone repositories from Bitbucket workspaces without leaving Claude Code.
+
+### Core Philosophy
+
+Bridge the gap between your Bitbucket cloud workspace and local development environment. Instead of manually browsing Bitbucket's web interface, use this skill to discover, search, and clone repositories with natural language commands.
+
+### Workflow
+
+```
+1. Authenticate → Set credentials in config.md
+        ↓
+2. List/Search → Query workspace repos with filters
+        ↓
+3. Select      → Pick from list or specify "all"
+        ↓
+4. Clone       → Download to local directory
+```
+
+### Quick Start
+
+1. **Configure Authentication**
+   - Edit `bitbucket-repo-lookup/references/config.md` with your Bitbucket credentials
+   - Set workspace slug, app password, and default clone directory
+
+2. **List Repositories**
+   ```
+   "List all repositories in my Bitbucket workspace"
+   "Show me repos in the 'backend' project"
+   "Find repositories containing 'api' in the name"
+   ```
+
+3. **Clone Repositories**
+   ```
+   "Clone repos 1, 3, and 5"
+   "Download all of them"
+   "Clone the 'user-service' repository"
+   ```
+
+### Filtering Options
+
+| Filter | Example |
+|--------|---------|
+| By project | "List repos in the 'backend' project" |
+| By language | "Show only Python repositories" |
+| By name | "Find repos containing 'service'" |
+| By activity | "List repos updated in the last 30 days" |
+| Combined | "Python repos in backend updated this month" |
+
+### Security Notes
+
+- **Never commit credentials** — Keep `config.md` in `.gitignore` if sharing
+- **Use App Passwords** — More secure than account passwords, can be revoked
+- **Minimal permissions** — Only request repository read access (sufficient for listing and cloning repositories)
+- **Token rotation** — Regularly rotate your access tokens
+
+See `bitbucket-repo-lookup/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
-Both skills reference external directories for output. Edit the `references/config.md` file in each skill to customize paths.
+Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
 
 ### Default Paths
 
@@ -172,6 +230,7 @@ Both skills reference external directories for output. Edit the `references/conf
 |-------|------------------|
 | code-journey-documenter | `~/dev/personal/books/code-with-claude` |
 | social-media-poster | `~/dev/personal/social-posts` |
+| bitbucket-repo-lookup | `~/repos` (clone destination) |
 
 ### Directory Structure (Book)
 
@@ -227,20 +286,32 @@ claude-code-skills/
 │   └── scripts/
 │       └── format_session.py             # Session → Chapter converter
 │
-└── social-media-poster/
+├── social-media-poster/
+│   ├── SKILL.md                          # Skill definition
+│   ├── assets/
+│   │   └── templates/
+│   │       ├── x-single.md               # Single tweet template
+│   │       ├── x-thread.md               # Thread template
+│   │       └── linkedin.md               # LinkedIn post template
+│   ├── references/
+│   │   ├── config.md                     # Path configuration
+│   │   ├── platform-x.md                 # X/Twitter best practices
+│   │   ├── platform-linkedin.md          # LinkedIn best practices
+│   │   └── voice-guide.md                # Writing style guide
+│   └── scripts/
+│       └── validate_post.py              # Post validator
+│
+└── bitbucket-repo-lookup/
     ├── SKILL.md                          # Skill definition
     ├── assets/
     │   └── templates/
-    │       ├── x-single.md               # Single tweet template
-    │       ├── x-thread.md               # Thread template
-    │       └── linkedin.md               # LinkedIn post template
+    │       ├── repo-list.md              # Repository listing template
+    │       └── clone-summary.md          # Clone summary template
     ├── references/
-    │   ├── config.md                     # Path configuration
-    │   ├── platform-x.md                 # X/Twitter best practices
-    │   ├── platform-linkedin.md          # LinkedIn best practices
-    │   └── voice-guide.md                # Writing style guide
+    │   ├── config.md                     # Path and auth configuration
+    │   └── api-guide.md                  # Bitbucket API reference
     └── scripts/
-        └── validate_post.py              # Post validator
+        └── bitbucket_api.py              # API helper script
 ```
 
 ---
