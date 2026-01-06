@@ -76,7 +76,7 @@ class Repository:
 
     @classmethod
     def from_api_response(cls, data: dict) -> "Repository":
-        """Create Repository from Bitbucket API response."""
+        """Create Repository from Bitbucket Cloud API response."""
         project = data.get("project", {})
         mainbranch = data.get("mainbranch", {})
 
@@ -99,6 +99,37 @@ class Repository:
             clone_url_https=clone_urls.get("https", ""),
             clone_url_ssh=clone_urls.get("ssh", ""),
             html_url=data.get("links", {}).get("html", {}).get("href", ""),
+        )
+
+    @classmethod
+    def from_server_response(cls, data: dict, project_key: str) -> "Repository":
+        """Create Repository from Bitbucket Server API response."""
+        project = data.get("project", {})
+
+        # Extract clone URLs from Server format
+        clone_urls = {}
+        for link in data.get("links", {}).get("clone", []):
+            if link.get("name") == "http":
+                clone_urls["https"] = link.get("href", "")
+            elif link.get("name") == "ssh":
+                clone_urls["ssh"] = link.get("href", "")
+
+        return cls(
+            name=data.get("name", ""),
+            slug=data.get("slug", ""),
+            full_name=f"{project_key}/{data.get('slug', '')}",
+            description=data.get("description", "") or "",
+            language="N/A",  # Server API doesn't provide language
+            project_key=project.get("key", project_key),
+            project_name=project.get("name", "N/A"),
+            size=0,  # Server API doesn't provide size in list
+            is_private=not data.get("public", True),
+            main_branch="main",  # Default, Server doesn't always provide this
+            created_on="",  # Not in Server API
+            updated_on="",  # Not in Server API
+            clone_url_https=clone_urls.get("https", ""),
+            clone_url_ssh=clone_urls.get("ssh", ""),
+            html_url=data.get("links", {}).get("self", [{}])[0].get("href", ""),
         )
 
     @property
@@ -213,11 +244,11 @@ class BitbucketClient:
         max_results: int = None,
     ) -> list[Repository]:
         """
-        List repositories in a workspace with optional filters.
+        List repositories in a workspace/project with optional filters.
 
         Args:
-            workspace: Bitbucket workspace slug
-            project: Filter by project key
+            workspace: Bitbucket workspace slug (Cloud) or project key (Server)
+            project: Filter by project key (Cloud only)
             language: Filter by programming language
             name_contains: Filter by name (fuzzy match)
             sort: Sort field (prefix with - for descending)
@@ -227,40 +258,68 @@ class BitbucketClient:
         Returns:
             List of Repository objects
         """
-        # Build query filter
-        query_parts = []
-        if project:
-            query_parts.append(f'project.key = "{project}"')
-        if language:
-            query_parts.append(f'language = "{language.lower()}"')
-        if name_contains:
-            query_parts.append(f'name ~ "{name_contains}"')
+        is_server = hasattr(self, 'is_server') and self.is_server
 
-        query = " AND ".join(query_parts) if query_parts else None
+        if is_server:
+            # Bitbucket Server API
+            params = {"limit": page_size}
+            if name_contains:
+                params["name"] = name_contains
+            url = f"{self.base_url}/projects/{quote(workspace)}/repos"
+            repositories = []
+            start = 0
 
-        # Build URL parameters
-        params = {"pagelen": page_size, "sort": sort}
-        if query:
-            params["q"] = query
-
-        url = f"{self.base_url}/repositories/{quote(workspace)}"
-        repositories = []
-
-        while url:
-            if max_results and len(repositories) >= max_results:
-                break
-
-            data = self._make_request("GET", url, params=params)
-            params = {}  # Clear params for subsequent pages (next URL includes them)
-
-            for repo_data in data.get("values", []):
+            while True:
                 if max_results and len(repositories) >= max_results:
                     break
-                repositories.append(Repository.from_api_response(repo_data))
 
-            url = data.get("next")
+                params["start"] = start
+                data = self._make_request("GET", url, params=params)
 
-        return repositories
+                for repo_data in data.get("values", []):
+                    if max_results and len(repositories) >= max_results:
+                        break
+                    repositories.append(Repository.from_server_response(repo_data, workspace))
+
+                if data.get("isLastPage", True):
+                    break
+                start = data.get("nextPageStart", start + page_size)
+
+            return repositories
+        else:
+            # Bitbucket Cloud API
+            query_parts = []
+            if project:
+                query_parts.append(f'project.key = "{project}"')
+            if language:
+                query_parts.append(f'language = "{language.lower()}"')
+            if name_contains:
+                query_parts.append(f'name ~ "{name_contains}"')
+
+            query = " AND ".join(query_parts) if query_parts else None
+
+            params = {"pagelen": page_size, "sort": sort}
+            if query:
+                params["q"] = query
+
+            url = f"{self.base_url}/repositories/{quote(workspace)}"
+            repositories = []
+
+            while url:
+                if max_results and len(repositories) >= max_results:
+                    break
+
+                data = self._make_request("GET", url, params=params)
+                params = {}  # Clear params for subsequent pages
+
+                for repo_data in data.get("values", []):
+                    if max_results and len(repositories) >= max_results:
+                        break
+                    repositories.append(Repository.from_api_response(repo_data))
+
+                url = data.get("next")
+
+            return repositories
 
     def get_repository(self, workspace: str, repo_slug: str) -> Repository:
         """
@@ -428,6 +487,43 @@ def format_json(repositories: list[Repository]) -> str:
     return json.dumps(data, indent=2)
 
 
+def load_credentials_from_file():
+    """
+    Automatically load credentials from .credentials file.
+
+    Searches for .credentials in these locations (in order):
+    1. bitbucket-repo-lookup/references/.credentials (skill location)
+    2. ./references/.credentials (current directory)
+    3. ./.credentials (current directory)
+
+    Parses bash export statements and returns as dict.
+    Returns empty dict if no file found.
+    """
+    import re
+    from pathlib import Path
+
+    # Possible credential file locations
+    search_paths = [
+        Path(__file__).parent.parent / "references" / ".credentials",  # Skill location
+        Path.cwd() / "references" / ".credentials",
+        Path.cwd() / ".credentials",
+    ]
+
+    for cred_path in search_paths:
+        if cred_path.exists():
+            credentials = {}
+            with open(cred_path, 'r') as f:
+                for line in f:
+                    # Parse: export VAR_NAME="value"
+                    match = re.match(r'^export\s+([A-Z_]+)="([^"]*)"', line.strip())
+                    if match:
+                        var_name, value = match.groups()
+                        credentials[var_name] = value
+            return credentials
+
+    return {}
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Bitbucket Repository Lookup Helper",
@@ -437,10 +533,16 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # Common arguments for all commands
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("--base-url", help="Bitbucket API base URL (overrides default)")
+    parent_parser.add_argument("--username", help="Bitbucket username (overrides env var)")
+    parent_parser.add_argument("--password", help="Bitbucket password/token (overrides env var)")
+
     # List command
-    list_parser = subparsers.add_parser("list", help="List repositories")
-    list_parser.add_argument("--workspace", "-w", required=True, help="Workspace slug")
-    list_parser.add_argument("--project", "-p", help="Filter by project key")
+    list_parser = subparsers.add_parser("list", help="List repositories", parents=[parent_parser])
+    list_parser.add_argument("--workspace", "-w", help="Workspace slug (Cloud) or Project key (Server)")
+    list_parser.add_argument("--project", "-p", help="Filter by project key (Cloud only)")
     list_parser.add_argument("--language", "-l", help="Filter by language")
     list_parser.add_argument("--search", "-s", help="Search by name")
     list_parser.add_argument("--sort", default="-updated_on", help="Sort field (default: -updated_on)")
@@ -468,16 +570,54 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    # Get credentials from environment
-    username = os.environ.get("BITBUCKET_USERNAME")
-    app_password = os.environ.get("BITBUCKET_APP_PASSWORD")
+    # Try to load from .credentials file first
+    file_creds = load_credentials_from_file()
+
+    # Get credentials (priority: CLI args > env vars > .credentials file)
+    username = (
+        args.username or
+        os.environ.get("BITBUCKET_USERNAME") or
+        file_creds.get("BITBUCKET_USERNAME")
+    )
+
+    app_password = (
+        args.password or
+        os.environ.get("BITBUCKET_APP_PASSWORD") or
+        os.environ.get("BITBUCKET_ACCESS_TOKEN") or
+        file_creds.get("BITBUCKET_APP_PASSWORD") or
+        file_creds.get("BITBUCKET_ACCESS_TOKEN")
+    )
+
+    base_url = (
+        args.base_url or
+        os.environ.get("BITBUCKET_BASE_URL") or
+        file_creds.get("BITBUCKET_BASE_URL") or
+        API_BASE_URL
+    )
 
     if not username or not app_password:
-        print("Error: Set BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables", file=sys.stderr)
+        print("Error: No credentials found.", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Credential sources checked (in order):", file=sys.stderr)
+        print("  1. Command line arguments (--username, --password)", file=sys.stderr)
+        print("  2. Environment variables (BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD)", file=sys.stderr)
+        print("  3. .credentials file (bitbucket-repo-lookup/references/.credentials)", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("To set up credentials:", file=sys.stderr)
+        print("  - Copy .credentials.example to .credentials and fill in your values", file=sys.stderr)
+        print("  - Or set environment variables", file=sys.stderr)
+        print("  - Or use --username and --password flags", file=sys.stderr)
         sys.exit(1)
 
+    # Auto-detect instance type from URL
+    is_server = "rest/api" in base_url or "api.bitbucket.org" not in base_url
+    if is_server and "rest/api" not in base_url:
+        # Assume Server and append /rest/api/1.0 if not present
+        base_url = base_url.rstrip("/") + "/rest/api/1.0"
+
     try:
-        client = BitbucketClient(username, app_password)
+        client = BitbucketClient(username, app_password, base_url=base_url)
+        client.is_server = is_server  # Store for conditional logic
 
         if args.command == "list":
             repos = client.list_repositories(

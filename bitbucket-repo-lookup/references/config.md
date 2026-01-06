@@ -43,7 +43,7 @@ See `SKILL.md` for complete authentication documentation.
 ```yaml
 workspace:
   # Your Bitbucket workspace slug (from URL: bitbucket.org/WORKSPACE/repo)
-  slug: your-workspace-slug
+  slug: IN
 
   # Optional: Default project to filter (leave empty for all projects)
   default_project: ""
@@ -98,10 +98,24 @@ With `organize_by_project: false`:
 
 ## API Settings
 
+**IMPORTANT:** The actual base URL should be configured in `.credentials` using the `BITBUCKET_BASE_URL` environment variable, NOT in this file.
+
 ```yaml
 api:
-  # Bitbucket API base URL (usually don't change this)
-  base_url: https://api.bitbucket.org/2.0
+  # Bitbucket API base URL (configured via environment variable)
+  #
+  # For Bitbucket Cloud:
+  #   export BITBUCKET_BASE_URL="https://api.bitbucket.org/2.0"
+  #
+  # For Bitbucket Server/Data Center:
+  #   export BITBUCKET_BASE_URL="https://your-bitbucket-server.example.com/rest/api/1.0"
+  #
+  # This setting is read from BITBUCKET_BASE_URL environment variable.
+  # Set it in your .credentials file (which is gitignored).
+
+  # Instance type: "cloud" or "server"
+  # Auto-detected from base_url if not specified
+  instance_type: auto
 
   # Request timeout in seconds
   timeout: 30
