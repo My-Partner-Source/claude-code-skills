@@ -1,0 +1,22 @@
+# VPN Check Configuration
+# =============================================================================
+# This file is a template. The actual config file should be created at:
+#   ~/.claude/skills/vpn-check/.vpn-config
+#
+# On first run, the skill will prompt you to create this file automatically.
+# =============================================================================
+
+# Primary internal hostname to check (REQUIRED)
+# This should be a hostname that only resolves when connected to VPN
+export VPN_CHECK_HOST="internal.example.com"
+
+# Optional: Expected IP address for extra validation
+# If set, DNS must resolve to this exact IP address
+# export VPN_CHECK_EXPECTED_IP="10.0.0.1"
+
+# Optional: DNS resolution timeout in seconds (default: 5)
+# export VPN_CHECK_TIMEOUT="5"
+
+# Optional: Additional fallback hosts (comma-separated)
+# VPN is considered connected if ANY host resolves
+# export VPN_CHECK_FALLBACK_HOSTS="backup1.internal.com,backup2.internal.com"

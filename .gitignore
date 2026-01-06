@@ -55,3 +55,8 @@ out/
 .credentials
 **/references/.credentials
 bitbucket-repo-lookup/references/.credentials
+
+# VPN Check config (user-specific, contains internal hostnames)
+.vpn-config
+**/references/.vpn-config
+vpn-check/references/.vpn-config

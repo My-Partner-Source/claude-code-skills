@@ -30,25 +30,31 @@ This skill bridges the gap between your Bitbucket cloud workspace and your local
 
 | Skill | Path | Purpose |
 |-------|------|---------|
+| vpn-check | `vpn-check/SKILL.md` | Verify VPN connectivity before Bitbucket access |
 | credential-setup | `credential-setup/SKILL.md` | Configure Bitbucket API credentials |
 
 ## Workflow
 
-### 1. Configure Credentials
+### 1. Verify VPN Connectivity
+- Check VPN status using vpn-check skill
+- If not connected, prompt user to connect before proceeding
+- Bitbucket Server instances typically require VPN access
+
+### 2. Configure Credentials
 - Read credential-setup skill
 - Ensure `.credentials` exists with BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD
 - Alternative: Set environment variables or use CLI args (see config.md)
 
-### 2. Configure Workspace
+### 3. Configure Workspace
 - Edit `references/config.md` to set workspace slug and clone preferences
 
-### 3. List Repositories
+### 4. List Repositories
 - Use natural language queries to list and filter repositories:
   - "List all repositories in my Bitbucket workspace"
   - "Show me repos in the 'backend' project"
   - "Find repositories containing 'api' in the name"
 
-### 4. Select and Clone
+### 5. Select and Clone
 - Specify repositories to clone by number, name, or "all":
   - "Clone repos 1, 3, and 5"
   - "Download all of them"
@@ -156,6 +162,7 @@ This skill uses the Bitbucket Cloud REST API v2.0. See `references/api-guide.md`
 
 | Issue                          | Solution                                          |
 |--------------------------------|---------------------------------------------------|
+| VPN not connected              | Run vpn-check skill, connect to VPN               |
 | Authentication failed          | Check app password permissions in Bitbucket       |
 | Workspace not found            | Verify workspace slug in config.md                |
 | Rate limited                   | Wait and retry, or use authenticated requests     |

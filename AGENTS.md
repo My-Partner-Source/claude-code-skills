@@ -4,11 +4,12 @@ This file provides AI coding assistants with essential context about the codebas
 
 ## Project Overview
 
-**claude-code-skills** is a collection of three specialized skills designed to streamline development workflows:
+**claude-code-skills** is a collection of specialized skills designed to streamline development workflows:
 
 1. **code-journey-documenter** - Transform coding sessions into book chapters for "Code With Claude: How AI Transformed the Way I Work (And Think)"
 2. **social-media-poster** - Convert development insights into authentic X/Twitter and LinkedIn posts
 3. **bitbucket-repo-lookup** - Discover, search, and clone Bitbucket repositories without leaving your development environment
+4. **vpn-check** - Verify VPN connectivity before accessing internal resources (prerequisite for other skills)
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -73,17 +74,24 @@ claude-code-skills/
 │   └── scripts/
 │       └── validate_post.py              # Platform-specific post validator (6.6KB)
 │
-└── bitbucket-repo-lookup/
+├── bitbucket-repo-lookup/
+│   ├── SKILL.md                          # Skill definition
+│   ├── assets/
+│   │   └── templates/
+│   │       ├── repo-list.md              # Repository listing template
+│   │       └── clone-summary.md          # Clone operation summary template
+│   ├── references/
+│   │   ├── config.md                     # Auth and path configuration
+│   │   └── api-guide.md                  # Bitbucket API reference
+│   └── scripts/
+│       └── bitbucket_api.py              # Bitbucket Cloud API wrapper (21KB)
+│
+└── vpn-check/
     ├── SKILL.md                          # Skill definition
-    ├── assets/
-    │   └── templates/
-    │       ├── repo-list.md              # Repository listing template
-    │       └── clone-summary.md          # Clone operation summary template
     ├── references/
-    │   ├── config.md                     # Auth and path configuration
-    │   └── api-guide.md                  # Bitbucket API reference
+    │   └── .vpn-config.example           # Configuration template (safe to commit)
     └── scripts/
-        └── bitbucket_api.py              # Bitbucket Cloud API wrapper (21KB)
+        └── check_vpn.py                  # VPN connectivity checker (4KB)
 ```
 
 ---
@@ -95,6 +103,7 @@ claude-code-skills/
 | **code-journey-documenter** | Parse session logs → structured chapter drafts | `format_session.py`<br>`book-structure.md`<br>`session-template.md` | `/code-journey-documenter` |
 | **social-media-poster** | Validate posts for X/LinkedIn | `validate_post.py`<br>`voice-guide.md`<br>`platform-*.md` | `/social-media-poster` |
 | **bitbucket-repo-lookup** | List/search/clone Bitbucket repos | `bitbucket_api.py`<br>`config.md`<br>`api-guide.md` | `/bitbucket-repo-lookup` |
+| **vpn-check** | Verify VPN connectivity via DNS | `check_vpn.py`<br>`.vpn-config.example` | `/vpn-check` |
 
 ---
 
@@ -274,6 +283,52 @@ python bitbucket-repo-lookup/scripts/bitbucket_api.py info repo-slug
 - Retry logic: 3 attempts with 2-second delays
 - Clone methods: HTTPS or SSH
 - Supports shallow clones: `--depth N`
+
+---
+
+### check_vpn.py (vpn-check)
+
+Verifies VPN connectivity by checking if internal hostnames can be resolved via DNS.
+
+```bash
+# Check VPN status (prompts for setup on first run)
+python vpn-check/scripts/check_vpn.py
+
+# Quiet mode (exit code only, for scripting)
+python vpn-check/scripts/check_vpn.py --quiet
+
+# Force re-run setup
+python vpn-check/scripts/check_vpn.py --setup
+
+# Custom timeout
+python vpn-check/scripts/check_vpn.py --timeout 10
+```
+
+**What it checks:**
+- Attempts DNS resolution of configured internal hostname
+- Optionally validates resolved IP matches expected value
+- Supports fallback hosts if primary fails
+
+**Configuration:**
+- Config file: `~/.claude/skills/vpn-check/.vpn-config`
+- Auto-created on first run via interactive prompt
+- Uses bash export format (same as `.credentials`)
+
+**Exit codes:**
+- `0` = VPN connected (hostname resolved)
+- `1` = VPN not connected (hostname did not resolve)
+- `2` = Configuration error
+
+**Skill Stacking:**
+Other skills can use vpn-check as a prerequisite. The bitbucket-repo-lookup skill automatically checks VPN status before Server operations.
+
+```python
+# Check VPN programmatically
+result = subprocess.run(['python3', 'vpn-check/scripts/check_vpn.py', '--quiet'], capture_output=True)
+if result.returncode != 0:
+    print("VPN not connected")
+    sys.exit(1)
+```
 
 ---
 
@@ -879,6 +934,7 @@ When contributing to this repository:
 |------|---------|
 | Format session log | `python code-journey-documenter/scripts/format_session.py session.md > chapter.md` |
 | Validate social post | `python social-media-poster/scripts/validate_post.py post.md` |
+| Check VPN status | `python vpn-check/scripts/check_vpn.py` |
 | List Bitbucket repos | `python bitbucket-repo-lookup/scripts/bitbucket_api.py list` |
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
 
@@ -888,6 +944,7 @@ When contributing to this repository:
 |-------|----------------|---------|
 | code-journey-documenter | `references/config.md` | Book repository path |
 | social-media-poster | `references/config.md` | Posts repository structure |
+| vpn-check | `~/.claude/skills/vpn-check/.vpn-config` | Internal hostname for VPN detection |
 | bitbucket-repo-lookup | `references/config.md` | Workspace, clone settings (credentials in `.credentials`) |
 
 ### Important Files
@@ -903,10 +960,17 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-06
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-06):**
+**Recent Changes (2026-01-06 v1.2.0):**
+- Added vpn-check skill for VPN connectivity verification
+- Implemented skill stacking pattern (vpn-check → bitbucket-repo-lookup)
+- VPN check auto-runs for Bitbucket Server instances
+- Interactive setup creates config at ~/.claude/skills/vpn-check/.vpn-config
+- Added .vpn-config to .gitignore patterns
+
+**Previous Changes (2026-01-06 v1.1.0):**
 - Added comprehensive bitbucket-repo-lookup implementation details
 - Documented Bitbucket Server vs Cloud API differences
 - Documented credential auto-loading mechanism

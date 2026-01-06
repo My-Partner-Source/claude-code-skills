@@ -554,6 +554,40 @@ def load_credentials_from_file():
     return {}
 
 
+def check_vpn_status(quiet: bool = True) -> bool:
+    """
+    Check VPN connectivity using the vpn-check skill.
+
+    Args:
+        quiet: Suppress vpn-check output (just check exit code)
+
+    Returns:
+        True if VPN is connected or vpn-check is not installed, False otherwise
+    """
+    from pathlib import Path
+
+    # Look for vpn-check script relative to this script's location
+    vpn_script = Path(__file__).parent.parent.parent / "vpn-check" / "scripts" / "check_vpn.py"
+
+    if not vpn_script.exists():
+        # VPN check not installed - skip the check
+        return True
+
+    try:
+        cmd = ["python3", str(vpn_script)]
+        if quiet:
+            cmd.append("--quiet")
+
+        result = subprocess.run(cmd, capture_output=True, timeout=30)
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        print("Warning: VPN check timed out", file=sys.stderr)
+        return True  # Don't block on timeout
+    except Exception as e:
+        print(f"Warning: VPN check failed: {e}", file=sys.stderr)
+        return True  # Don't block on unexpected errors
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Bitbucket Repository Lookup Helper",
@@ -644,6 +678,15 @@ def main():
     if is_server and "rest/api" not in base_url:
         # Assume Server and append /rest/api/1.0 if not present
         base_url = base_url.rstrip("/") + "/rest/api/1.0"
+
+    # Check VPN connectivity for Server instances
+    if is_server and not check_vpn_status():
+        print("", file=sys.stderr)
+        print("VPN not connected. Bitbucket Server requires VPN access.", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Please connect to your VPN and try again.", file=sys.stderr)
+        print("Run 'python vpn-check/scripts/check_vpn.py' to verify VPN status.", file=sys.stderr)
+        sys.exit(1)
 
     try:
         client = BitbucketClient(username, app_password, base_url=base_url)
