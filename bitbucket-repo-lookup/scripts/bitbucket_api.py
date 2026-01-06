@@ -326,41 +326,70 @@ class BitbucketClient:
         Get details for a specific repository.
 
         Args:
-            workspace: Bitbucket workspace slug
+            workspace: Bitbucket workspace slug (or project key for Server)
             repo_slug: Repository slug
 
         Returns:
             Repository object
         """
-        url = f"{self.base_url}/repositories/{quote(workspace)}/{quote(repo_slug)}"
-        data = self._make_request("GET", url)
-        return Repository.from_api_response(data)
+        is_server = hasattr(self, 'is_server') and self.is_server
+
+        if is_server:
+            # Bitbucket Server API
+            url = f"{self.base_url}/projects/{quote(workspace)}/repos/{quote(repo_slug)}"
+            data = self._make_request("GET", url)
+            return Repository.from_server_response(data, workspace)
+        else:
+            # Bitbucket Cloud API
+            url = f"{self.base_url}/repositories/{quote(workspace)}/{quote(repo_slug)}"
+            data = self._make_request("GET", url)
+            return Repository.from_api_response(data)
 
     def get_latest_commit(self, workspace: str, repo_slug: str) -> dict:
         """
         Get the latest commit for a repository.
 
         Args:
-            workspace: Bitbucket workspace slug
+            workspace: Bitbucket workspace slug (or project key for Server)
             repo_slug: Repository slug
 
         Returns:
             Commit information dict
         """
-        url = f"{self.base_url}/repositories/{quote(workspace)}/{quote(repo_slug)}/commits"
-        data = self._make_request("GET", url, params={"pagelen": 1})
+        is_server = hasattr(self, 'is_server') and self.is_server
 
-        commits = data.get("values", [])
-        if not commits:
-            return {}
+        if is_server:
+            # Bitbucket Server API
+            url = f"{self.base_url}/projects/{quote(workspace)}/repos/{quote(repo_slug)}/commits"
+            data = self._make_request("GET", url, params={"limit": 1})
 
-        commit = commits[0]
-        return {
-            "hash": commit.get("hash", "")[:7],
-            "message": commit.get("message", "").split("\n")[0][:50],
-            "author": commit.get("author", {}).get("user", {}).get("display_name", "Unknown"),
-            "date": commit.get("date", ""),
-        }
+            commits = data.get("values", [])
+            if not commits:
+                return {}
+
+            commit = commits[0]
+            return {
+                "hash": commit.get("id", "")[:7],
+                "message": commit.get("message", "").split("\n")[0][:50],
+                "author": commit.get("author", {}).get("displayName", "Unknown"),
+                "date": commit.get("authorTimestamp", ""),
+            }
+        else:
+            # Bitbucket Cloud API
+            url = f"{self.base_url}/repositories/{quote(workspace)}/{quote(repo_slug)}/commits"
+            data = self._make_request("GET", url, params={"pagelen": 1})
+
+            commits = data.get("values", [])
+            if not commits:
+                return {}
+
+            commit = commits[0]
+            return {
+                "hash": commit.get("hash", "")[:7],
+                "message": commit.get("message", "").split("\n")[0][:50],
+                "author": commit.get("author", {}).get("user", {}).get("display_name", "Unknown"),
+                "date": commit.get("date", ""),
+            }
 
     def clone_repository(
         self,
@@ -388,9 +417,10 @@ class BitbucketClient:
 
         # For HTTPS, embed credentials in URL
         if method == "https" and self.username and self.app_password:
+            # Use safe='' to encode all special characters including '/'
             clone_url = clone_url.replace(
                 "https://",
-                f"https://{quote(self.username)}:{quote(self.app_password)}@"
+                f"https://{quote(self.username, safe='')}:{quote(self.app_password, safe='')}@"
             )
 
         # Build git clone command
@@ -551,13 +581,13 @@ def main():
     list_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     # Info command
-    info_parser = subparsers.add_parser("info", help="Get repository info")
+    info_parser = subparsers.add_parser("info", help="Get repository info", parents=[parent_parser])
     info_parser.add_argument("--workspace", "-w", required=True, help="Workspace slug")
     info_parser.add_argument("--repo", "-r", required=True, help="Repository slug")
     info_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     # Clone command
-    clone_parser = subparsers.add_parser("clone", help="Clone repositories")
+    clone_parser = subparsers.add_parser("clone", help="Clone repositories", parents=[parent_parser])
     clone_parser.add_argument("--workspace", "-w", required=True, help="Workspace slug")
     clone_parser.add_argument("--repos", "-r", required=True, help="Comma-separated repo slugs")
     clone_parser.add_argument("--dest", "-d", default=".", help="Destination directory")

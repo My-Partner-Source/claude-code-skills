@@ -26,7 +26,8 @@ This is **not a traditional monolithic application**. Instead, it's a skill mark
 | **Markdown** | Content format for templates, documentation, sessions, posts |
 | **YAML Frontmatter** | Metadata in SKILL.md files and content templates |
 | **Git** | Version control and repository cloning |
-| **Bitbucket Cloud REST API v2.0** | Repository discovery and management |
+| **Bitbucket Cloud REST API v2.0** | Repository discovery and management (Cloud instances) |
+| **Bitbucket Server REST API v1.0** | Repository discovery and management (Server/Data Center instances) |
 
 **Dependencies:**
 - Python 3 standard library (all skills)
@@ -221,6 +222,17 @@ python social-media-poster/scripts/validate_post.py post.md
 
 ### bitbucket_api.py (bitbucket-repo-lookup)
 
+**IMPORTANT: Bitbucket Server vs Cloud Support**
+
+This script supports **both** Bitbucket Cloud and Bitbucket Server/Data Center instances with automatic detection based on the base URL.
+
+| Instance Type | API Base URL Pattern | Detection |
+|--------------|---------------------|-----------|
+| **Cloud** | `https://api.bitbucket.org/2.0` | Default, or `api.bitbucket.org` in URL |
+| **Server/Data Center** | `https://your-domain.com/rest/api/1.0` | Contains `/rest/api` or custom domain |
+
+**Auto-detection:** The script automatically detects the instance type from the `BITBUCKET_BASE_URL` environment variable or `--base-url` argument.
+
 Bitbucket Cloud REST API v2.0 wrapper for repository discovery and cloning.
 
 **Requires external dependency:** `pip install requests`
@@ -262,6 +274,162 @@ python bitbucket-repo-lookup/scripts/bitbucket_api.py info repo-slug
 - Retry logic: 3 attempts with 2-second delays
 - Clone methods: HTTPS or SSH
 - Supports shallow clones: `--depth N`
+
+---
+
+## bitbucket-repo-lookup Implementation Details
+
+**Critical for future development and debugging.**
+
+### Credential Auto-Loading (2026-01-06)
+
+The script implements **automatic credential loading** from `.credentials` file - no manual sourcing required!
+
+**Three-tier credential resolution** (priority order):
+1. **CLI arguments** (`--username`, `--password`, `--base-url`)
+2. **Environment variables** (`BITBUCKET_USERNAME`, `BITBUCKET_APP_PASSWORD`, `BITBUCKET_BASE_URL`)
+3. **`.credentials` file** (auto-parsed from multiple locations)
+
+**Auto-discovery locations:**
+```python
+# Searches in order:
+1. bitbucket-repo-lookup/references/.credentials  # Skill location
+2. ./references/.credentials                       # Current directory
+3. ./.credentials                                  # Current directory
+```
+
+**File format:** Bash export statements
+```bash
+export BITBUCKET_USERNAME="your-username"
+export BITBUCKET_APP_PASSWORD="your-token-or-app-password"
+export BITBUCKET_BASE_URL="https://bitbucket.example.com/rest/api/1.0"
+```
+
+**Implementation:** Uses regex parsing (`r'^export\s+([A-Z_]+)="([^"]*)"'`) to extract credentials without executing shell commands.
+
+**Security:** `.credentials` file is in `.gitignore` and should have `600` permissions (owner read/write only).
+
+### Argument Parser Pattern (Fixed 2026-01-06)
+
+**CRITICAL:** All subcommands must inherit from `parent_parser` to access credential arguments.
+
+```python
+# Define parent parser with common arguments (lines 537-540)
+parent_parser = argparse.ArgumentParser(add_help=False)
+parent_parser.add_argument("--base-url", help="Bitbucket base URL")
+parent_parser.add_argument("--username", help="Bitbucket username")
+parent_parser.add_argument("--password", help="Bitbucket app password/access token")
+
+# Subcommands MUST include parents=[parent_parser]
+list_parser = subparsers.add_parser("list", parents=[parent_parser])    # ✓ Correct
+info_parser = subparsers.add_parser("info", parents=[parent_parser])    # ✓ Correct
+clone_parser = subparsers.add_parser("clone", parents=[parent_parser])  # ✓ Correct
+```
+
+**Why:** Without `parents=[parent_parser]`, subcommands can't access `args.username`, `args.password`, or `args.base_url`, causing `AttributeError: 'Namespace' object has no attribute 'username'`.
+
+### Bitbucket Server vs Cloud API Differences
+
+**Endpoint Structures:**
+
+| Operation | Cloud API | Server API |
+|-----------|-----------|------------|
+| **List repos** | `/repositories/{workspace}` | `/projects/{project}/repos` |
+| **Get repo** | `/repositories/{workspace}/{repo}` | `/projects/{project}/repos/{repo}` |
+| **Get commits** | `/repositories/{workspace}/{repo}/commits` | `/projects/{project}/repos/{repo}/commits` |
+
+**Response Format Differences:**
+
+| Field | Cloud | Server |
+|-------|-------|--------|
+| **Commit ID** | `hash` | `id` |
+| **Author** | `author.user.display_name` | `author.displayName` |
+| **Timestamp** | `date` | `authorTimestamp` |
+| **Pagination param** | `pagelen` | `limit` |
+| **Clone URLs** | `links.clone[].href` | `links.clone[].href` (same) |
+
+**Implementation Pattern:**
+
+```python
+def method(self, workspace: str, repo_slug: str):
+    is_server = hasattr(self, 'is_server') and self.is_server
+
+    if is_server:
+        # Bitbucket Server logic
+        url = f"{self.base_url}/projects/{workspace}/repos/{repo_slug}"
+        data = self._make_request("GET", url)
+        return Repository.from_server_response(data, workspace)
+    else:
+        # Bitbucket Cloud logic
+        url = f"{self.base_url}/repositories/{workspace}/{repo_slug}"
+        data = self._make_request("GET", url)
+        return Repository.from_api_response(data)
+```
+
+**Methods with dual support:**
+- `list_repositories()` (lines 205-322)
+- `get_repository()` (lines 324-346)
+- `get_latest_commit()` (lines 348-392)
+
+### URL Encoding for Credentials (Fixed 2026-01-06)
+
+**CRITICAL:** API tokens often contain special characters (especially `/`) that must be properly URL-encoded when embedding in clone URLs.
+
+**Problem:** Default `quote()` doesn't encode `/` characters, causing git to misinterpret credentials.
+
+**Solution:** Use `quote(value, safe='')` to encode ALL special characters:
+
+```python
+# WRONG - doesn't encode '/' in passwords
+clone_url = f"https://{quote(username)}:{quote(password)}@{domain}/repo.git"
+
+# CORRECT - encodes all special characters including '/'
+clone_url = f"https://{quote(username, safe='')}:{quote(password, safe='')}@{domain}/repo.git"
+```
+
+**Example:**
+```python
+# Example token with special characters: "abc123/def456+xyz789"
+quote(token)           # abc123/def456+xyz789  ❌ '/' and '+' not encoded
+quote(token, safe='')  # abc123%2Fdef456%2Bxyz789  ✓ '/' → %2F, '+' → %2B
+```
+
+**Location:** `clone_repository()` method, lines 420-424
+
+### Error Messages and Debugging
+
+**Common errors and their causes:**
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `AttributeError: 'Namespace' object has no attribute 'username'` | Subparser missing `parents=[parent_parser]` | Add `parents=[parent_parser]` to subparser definition |
+| `Authentication failed` | Wrong API endpoint (Cloud vs Server) | Set `BITBUCKET_BASE_URL` correctly for your instance |
+| `Resource not found` | Wrong API endpoint format | Check if using Server endpoints with Cloud credentials or vice versa |
+| `URL rejected: Port number was not a decimal number` | Special chars in password not URL-encoded | Use `quote(password, safe='')` instead of `quote(password)` |
+| `Missing credentials error` | `.credentials` file not found or malformed | Verify file exists and uses correct format |
+
+### Testing Checklist
+
+When modifying `bitbucket_api.py`, test all three commands:
+
+```bash
+# Test with credentials from .credentials file (no env vars set)
+unset BITBUCKET_USERNAME BITBUCKET_APP_PASSWORD BITBUCKET_BASE_URL
+
+# 1. List command
+python3 bitbucket-repo-lookup/scripts/bitbucket_api.py list --workspace PROJECT --limit 3
+
+# 2. Info command
+python3 bitbucket-repo-lookup/scripts/bitbucket_api.py info --workspace PROJECT --repo REPO_SLUG
+
+# 3. Clone command
+python3 bitbucket-repo-lookup/scripts/bitbucket_api.py clone --workspace PROJECT --repos REPO_SLUG --dest /tmp/test
+```
+
+**Expected results:**
+- All commands load credentials automatically
+- Server instances show correct project/repo info
+- Clone succeeds with credentials properly embedded in URL
 
 ---
 
@@ -734,6 +902,15 @@ When contributing to this repository:
 
 ---
 
-**Last Updated:** 2026-01-05
-**Version:** 1.0.0
+**Last Updated:** 2026-01-06
+**Version:** 1.1.0
 **Maintained by:** David Rutgos
+
+**Recent Changes (2026-01-06):**
+- Added comprehensive bitbucket-repo-lookup implementation details
+- Documented Bitbucket Server vs Cloud API differences
+- Documented credential auto-loading mechanism
+- Documented parent_parser pattern for argparse subcommands
+- Documented URL encoding requirements for credentials in clone URLs
+- Added common errors and debugging guide
+- Added testing checklist for bitbucket_api.py modifications
