@@ -1,39 +1,50 @@
 ---
 name: deployment-plan-checker
 description: Check deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries. Use when user asks to check/review/audit a deployment plan URL, verify team deployment readiness, or check completeness for QA/UAT/PROD environments.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Deployment Plan Checker
 
 Check deployment plans on Confluence to verify team Bamboo entry completeness.
 
+## Key Behavior
+
+**IMPORTANT: This skill ONLY reports on team members defined in `.team-config`.**
+
+- Filter OUT all other team members (Hiren, Benjamin, Michael, etc.) from reports
+- Only show entries where Engineering Lead matches a configured team member
+- When a section is empty, that means configured team members have NO entries (not ready)
+
+## PROD vs UAT/QA Comparison
+
+When checking a **PROD deployment plan**, the expectation is:
+
+1. **PROD should mirror UAT** — All entries from UAT should be copied to PROD
+2. **Empty sections = NOT READY** — If MySQL Scripts or Bamboo Items are empty but UAT has entries, PROD is incomplete
+3. **Compare against UAT** — When PROD is empty/incomplete, fetch the corresponding UAT plan to show what's missing
+
+### Deployment Plan Hierarchy
+```
+QA (sprint builds) → UAT (release candidate) → PROD (production)
+```
+
+When user asks to "check EVV 8.52" or similar version:
+1. Search for the PROD deployment plan for that version
+2. If PROD sections are empty, also fetch UAT to show expected entries
+3. Report what's missing from PROD compared to UAT
+
 ## Prerequisites
 
-- **VPN connected** — Run `/vpn-check` first (required to access yourcompany.atlassian.net)
+- **VPN connected** — Run `/vpn-check` first
 - **Atlassian MCP** must be configured and authenticated
 - **Team config** must exist at `references/.team-config`
 - **Credentials** must exist at `references/.credentials` with cloudId
 
 ### Stacked Skills
 
-This skill depends on:
-- **vpn-check** — Verifies VPN connectivity before attempting Atlassian access
+- **vpn-check** — Verifies VPN connectivity before Atlassian access
 - **credential-setup** — Helps create `.credentials` from template
-
-### First-Time Setup
-
-If `references/.credentials` doesn't exist, invoke the `credential-setup` skill:
-```
-/credential-setup
-```
-
-If `references/.team-config` doesn't exist:
-```bash
-cd ~/.claude/skills/deployment-plan-checker/references
-cp .team-config.example .team-config
-# Edit with your team member names (one per line)
-```
 
 ---
 
@@ -41,168 +52,145 @@ cp .team-config.example .team-config
 
 ### Step 0: Verify VPN Connectivity
 
-Before accessing Atlassian, verify VPN is connected:
-
 ```
 /vpn-check
 ```
 
-Or programmatically:
-```bash
-python ~/.claude/skills/vpn-check/scripts/check_vpn.py --quiet
-# Exit code 0 = connected, 1 = not connected
-```
-
-If VPN is not connected, stop and inform user to connect before proceeding.
+Or: `python ~/.claude/skills/vpn-check/scripts/check_vpn.py --quiet`
 
 ### Step 1: Load Configuration
 
-Read configuration files:
-
 ```bash
-# Load team members
 cat ~/.claude/skills/deployment-plan-checker/references/.team-config
-
-# Load credentials (for cloudId)
 cat ~/.claude/skills/deployment-plan-checker/references/.credentials
 ```
 
-Parse team members into a list (ignore lines starting with `#`).
-Extract `ATLASSIAN_CLOUD_ID` from credentials.
+Parse team members into a list (ignore `#` comments).
+**These are the ONLY people to include in reports.**
 
-If either file is missing, stop and guide user through setup.
+### Step 2: Identify Target Plan
 
-### Step 2: Parse URL and Extract Page ID
+From user request, determine:
+- **Specific URL** → Extract pageId directly
+- **Version number** (e.g., "EVV 8.52") → Search for PROD plan first
+- **Environment + date** (e.g., "QA20260107") → Search for that specific plan
 
-From the user-provided URL or search term, extract the page ID:
+**Search priority for version requests:**
+1. PROD plan for that version
+2. If PROD empty, also fetch UAT for comparison
 
-**URL patterns:**
-- Full URL: `https://yourcompany.atlassian.net/wiki/spaces/FD/pages/123456789/Title` → pageId: `123456789`
-- Tiny URL: `https://yourcompany.atlassian.net/wiki/x/AbCdEf` → needs resolution via search
-- Page ID only: `123456789` → use directly
-- Search term: `"QA20260107"` → search Confluence
+### Step 3: Fetch Confluence Page(s)
 
-**URL extraction regex:**
-```
-/pages/(\d+)  →  capture group 1 is pageId
-```
-
-### Step 3: Fetch Confluence Page
-
-Use Atlassian MCP to retrieve page content. Verified tool names:
-
-**To find cloudId (first time only):**
-```
-mcp__atlassian__getAccessibleAtlassianResources()
-# Returns list of accessible Atlassian sites with their UUIDs
-```
-
-**To fetch a page by ID:**
 ```
 mcp__atlassian__getConfluencePage({
   cloudId: "<uuid-from-credentials>",
-  pageId: "<extracted-page-id>",
+  pageId: "<page-id>",
   contentFormat: "markdown"
 })
 ```
 
-**To search for a page:**
 ```
 mcp__atlassian__search({
-  query: "<search-term>"
+  query: "<version> PROD deployment"
 })
 ```
 
-If authentication fails (error about cloudId not granted), prompt user to:
-1. Run `/mcp` in Claude Code
-2. Clear and re-authenticate to Atlassian
-3. Select the correct Atlassian site during OAuth
+### Step 4: Parse Sections (Team Members Only)
 
-### Step 4: Parse Release Highlights
+Scan these sections for **configured team members only**:
 
-From the page content, locate the **"Release Highlights - All Products"** section.
+1. **MySQL Scripts** — Look for team names in "Engineering Lead" column
+2. **Bamboo Items** — Look for team names in "Engineering Lead" column
+3. **Oracle Items** — Look for team names in "Engineering Lead" column
 
-This is a table with columns:
-| Type | Key | Summary | Assignee | Priority | Status | Updated |
+**Filtering rule:** Only include rows where Engineering Lead contains a name from `.team-config`
 
-**Extract rows where Assignee matches a team member from config.**
+### Step 5: Check Completeness
 
-Store as `teamItems[]`:
-```json
-[
-  {"key": "PROJ-1234", "summary": "Feature description", "assignee": "John Smith", "status": "DEPLOYMENT READY"}
-]
-```
+For each team member entry found:
 
-### Step 5: Parse Bamboos Section
+| Column | Required |
+|--------|----------|
+| Engineering Lead | Team member name |
+| DevOps/DBOps | "DevOps", "DBOps", or name |
+| Component/Service or File Name | Not empty |
+| Build Link (Bamboo) or File Name (MySQL) | URL or path |
+| Jira Item(s) | Jira key |
+| Rollback Link | URL or N/A |
 
-Locate the **"Bamboos"** section containing deployment entries.
+### Step 6: Compare PROD vs UAT (if applicable)
 
-Table columns:
-| Engineering Lead | DevOps | Component / Service | Build Link | Config Changes | Health Checks | Dependencies | Jira Item(s) | Rollback Link |
-
-**Important:** Team member names appear as `@Name` mentions in the markdown output. Search for team members by looking for their names after `@` symbols or in `<custom data-type="mention">` tags.
-
-For each team member from config, find their Bamboo entries by searching the "Engineering Lead" column.
-
-### Step 6: Check Completeness
-
-A Bamboo entry is **COMPLETE** when ALL required columns have values:
-
-| Column | Required Value |
-|--------|----------------|
-| Engineering Lead | Any name (not empty) |
-| DevOps | "DevOps" or a name |
-| Component / Service | Component name |
-| Build Link | URL or build reference with env/build info |
-| Config Changes | Y, N, or New |
-| Health Checks | URL or N/A |
-| Dependencies | N or dependency list |
-| Jira Item(s) | Jira key (e.g., PROJ-1234) |
-| Rollback Link | URL |
-
-**Classify each entry:**
-- **Complete**: All required columns filled
-- **Incomplete**: One or more required columns empty/missing
-- **Missing**: Jira item in Release Highlights but no Bamboo entry
+If checking PROD and sections are empty:
+1. Fetch corresponding UAT plan
+2. Extract team member entries from UAT
+3. Report these as **"Missing from PROD (expected from UAT)"**
 
 ### Step 7: Generate Report
 
-Output a structured report:
-
 ```markdown
-## Deployment Plan Check: [Environment] [Date]
+## Deployment Plan Check: [Environment] [Version] [Date]
 
-**Page**: [Confluence URL]
+**Page**: [URL]
 **Checked**: [timestamp]
+**Team Filter**: [list of configured team members]
 
-### Team Items in Release Highlights
-| Jira | Summary | Assignee | Status |
-|------|---------|----------|--------|
-| PROJ-1234 | Feature description | John Smith | DEPLOYMENT READY |
+### MySQL Scripts
+| Status | Team Member | Jira | File/Component |
+|--------|-------------|------|----------------|
+| ✅ | Name | PROJ-123 | filename.sql |
+| ❌ Missing | Name | PROJ-456 | (expected from UAT) |
 
-### Bamboo Entry Status
-
-#### Complete Entries
-| # | Lead | Component | Jira |
-|---|------|-----------|------|
-| 1 | John Smith | service-name | PROJ-1234 |
-
-#### Incomplete Entries (Action Required)
-| # | Lead | Component | Jira | Missing Fields |
-|---|------|-----------|------|----------------|
-| 5 | Jane Doe | other-service | PROJ-5678 | Build Link, Rollback Link |
-
-#### Missing Bamboo Entries
-Items in Release Highlights with no corresponding Bamboo entry:
-- PROJ-9999: "Another feature" (Assignee: Bob)
+### Bamboo Items
+| Status | Team Member | Component | Jira |
+|--------|-------------|-----------|------|
+| ✅ Complete | Name | service-name | PROJ-123 |
+| ⚠️ Incomplete | Name | service | PROJ-456 | Missing: Rollback Link |
+| ❌ Missing | Name | service | (expected from UAT) |
 
 ### Summary
-- Team items in Release Highlights: X
-- Complete Bamboo entries: Y/X
-- Incomplete Bamboo entries: Z
-- Missing Bamboo entries: W
-- **Status: READY** or **NOT READY (Z incomplete, W missing)**
+- Team members in config: X
+- Entries found: Y
+- Complete: Z
+- Incomplete: W
+- Missing from PROD: V
+- **Status: ✅ READY** or **❌ NOT READY**
+```
+
+---
+
+## Example Usage
+
+### Check a specific version's PROD readiness
+```
+User: Check the deployment plan for EVV 8.52
+
+Claude:
+1. Searches for "EVV 8.52 PROD"
+2. Fetches PROD page
+3. Finds MySQL Scripts and Bamboo Items are EMPTY for configured team
+4. Fetches UAT plan for comparison
+5. Reports: "PROD is NOT READY - missing X entries from UAT"
+```
+
+### Check a specific environment
+```
+User: Check UAT20260106
+
+Claude:
+1. Searches for "UAT20260106"
+2. Fetches page
+3. Filters for configured team members only
+4. Reports complete/incomplete entries for team
+```
+
+### Check with URL
+```
+User: Check https://hhaxsupport.atlassian.net/wiki/spaces/FD/pages/123456789
+
+Claude:
+1. Extracts pageId 123456789
+2. Fetches and parses
+3. Reports team entries only
 ```
 
 ---
@@ -211,25 +199,8 @@ Items in Release Highlights with no corresponding Bamboo entry:
 
 | Case | Handling |
 |------|----------|
-| Auth expired | Detect MCP error, prompt user to re-auth via browser |
-| Page not found | Clear error with URL, suggest searching |
-| No team items | Report "No items found for configured team members" |
-| Jira in highlights but not in Bamboos | Flag in "Missing Bamboo Entries" |
-| Multiple leads on one entry | Match if ANY team member in Engineering Lead |
-| Empty deployment plan | Handle gracefully, note page may be incomplete |
-
----
-
-## Example Usage
-
-```
-User: Check the deployment plan at https://yourcompany.atlassian.net/wiki/spaces/FD/pages/123456789/QA-Deployment
-
-Claude: [Loads config, extracts pageId 123456789, fetches page, parses tables, generates report]
-```
-
-```
-User: Is my team ready for the QA20260107 deployment?
-
-Claude: [Searches for "QA20260107", finds page, checks team's Bamboo entries]
-```
+| Empty PROD plan | Fetch UAT, report missing entries |
+| No team entries in plan | Report "No entries for configured team members" |
+| Team member in multiple entries | Report all entries for that member |
+| Non-team members in plan | **Ignore completely** — do not report |
+| PROD has entries but UAT has more | Report delta as missing |
