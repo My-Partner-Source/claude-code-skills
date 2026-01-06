@@ -26,58 +26,33 @@ This skill bridges the gap between your Bitbucket cloud workspace and your local
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## Dependencies
 
-### 1. Set Up Credentials
+| Skill | Path | Purpose |
+|-------|------|---------|
+| credential-setup | `credential-setup/SKILL.md` | Configure Bitbucket API credentials |
 
-Choose one authentication method:
+## Workflow
 
-**Option A: Credentials File (Recommended)**
-```bash
-# Copy the template
-cp bitbucket-repo-lookup/references/.credentials.example bitbucket-repo-lookup/references/.credentials
-
-# Edit .credentials with your actual Bitbucket credentials
-# Then source it before using the skill
-source bitbucket-repo-lookup/references/.credentials
-```
-
-**Option B: Environment Variables (Persistent)**
-```bash
-# Add to your ~/.bashrc or ~/.zshrc
-export BITBUCKET_USERNAME="your-username"
-export BITBUCKET_APP_PASSWORD="your-app-password"
-```
-
-**Option C: CLI Arguments (One-time use)**
-```bash
-# Provide credentials directly when running (not recommended for regular use)
-```
+### 1. Configure Credentials
+- Read credential-setup skill
+- Ensure `.credentials` exists with BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD
+- Alternative: Set environment variables or use CLI args (see config.md)
 
 ### 2. Configure Workspace
-
-Edit `references/config.md` to set:
-- Workspace slug
-- Default clone directory
-- Preferences (organize by project, filters, etc.)
+- Edit `references/config.md` to set workspace slug and clone preferences
 
 ### 3. List Repositories
-
-Ask Claude to list your repositories:
-```
-"List all repositories in my Bitbucket workspace"
-"Show me repos in the 'backend' project"
-"Find repositories containing 'api' in the name"
-```
+- Use natural language queries to list and filter repositories:
+  - "List all repositories in my Bitbucket workspace"
+  - "Show me repos in the 'backend' project"
+  - "Find repositories containing 'api' in the name"
 
 ### 4. Select and Clone
-
-After seeing the list, specify what to download:
-```
-"Clone repos 1, 3, and 5"
-"Download all of them"
-"Just clone the 'user-service' repository"
-```
+- Specify repositories to clone by number, name, or "all":
+  - "Clone repos 1, 3, and 5"
+  - "Download all of them"
+  - "Just clone the 'user-service' repository"
 
 ## Listing Repositories
 

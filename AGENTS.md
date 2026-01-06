@@ -310,6 +310,59 @@ cp bitbucket-repo-lookup/references/.credentials.example bitbucket-repo-lookup/r
 source bitbucket-repo-lookup/references/.credentials
 ```
 
+### Skill Orchestration Patterns
+
+When a skill depends on another skill's functionality, use the **Dependencies/Workflow pattern** rather than explicit "automatic" or "manual" invocation instructions.
+
+**Pattern Structure:**
+
+```markdown
+## Dependencies
+
+| Skill | Path | Purpose |
+|-------|------|---------|
+| skill-name | `path/to/SKILL.md` | Brief description of what it provides |
+
+## Workflow
+
+### 1. Step Name
+- Read skill-name skill
+- Perform action using skill functionality
+- Alternative options if applicable
+```
+
+**Example: credential-setup orchestration**
+
+```markdown
+## Dependencies
+
+| Skill | Path | Purpose |
+|-------|------|---------|
+| credential-setup | `credential-setup/SKILL.md` | Configure API credentials |
+
+## Workflow
+
+### 1. Authenticate
+- Read credential-setup skill
+- Ensure .credentials exists for service access
+- Alternative: Use environment variables or CLI args
+```
+
+**Benefits:**
+- **Declarative** - Dependencies listed upfront in table
+- **Workflow-driven** - Integration happens naturally in workflow steps
+- **Consistent** - Same pattern across all skill orchestrations
+- **No implementation details** - Doesn't prescribe how Claude invokes dependencies
+- **Single path** - No "automatic vs manual" dichotomy
+
+**Reference Implementation:** See `bitbucket-repo-lookup/SKILL.md` for complete example.
+
+**Anti-patterns to avoid:**
+- ❌ "Claude will automatically detect and invoke..."
+- ❌ "If X doesn't exist, this skill will automatically..."
+- ❌ Separate "Automatic (Recommended)" and "Manual" sections
+- ❌ Prerequisites section with setup instructions
+
 ### Configuration Loading
 
 All skills use `references/config.md` for non-sensitive configuration:

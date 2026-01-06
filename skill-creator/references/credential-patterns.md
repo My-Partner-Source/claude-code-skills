@@ -212,13 +212,15 @@ if not API_KEY:
 
 ## Three-Tier Strategy (Most Flexible)
 
-For maximum flexibility, support all three methods in priority order.
+For maximum flexibility, scripts can check multiple credential sources in workflow order.
 
-### Authentication Priority
+### Credential Sources (Checked in Order)
 
-1. **Environment variables** (checked first)
-2. **Credentials file** (checked second)
-3. **CLI arguments** (fallback for one-time use)
+1. **Environment variables** - System-wide or session configuration
+2. **Credentials file** (.credentials) - Project-specific via credential-setup skill dependency
+3. **CLI arguments** - One-time use for testing or CI/CD
+
+This isn't about priority/fallback - it's about workflow flexibility. The credential-setup skill handles source #2 (.credentials file creation).
 
 ### Python Implementation
 
@@ -373,3 +375,51 @@ api_key: your-key-here
 | **Three-Tier Strategy** | Complex integrations | ✅ Maximum flexibility<br>✅ Multiple use cases | ❌ More code<br>❌ More documentation |
 
 **Recommendation:** Use **Credentials File + Template** for most skills. It balances security, usability, and developer experience.
+
+---
+
+## Dependency Pattern: credential-setup Skill
+
+Skills requiring credentials should declare credential-setup as a dependency and integrate it into their workflow.
+
+### Pattern Structure
+
+**1. Create .credentials.example template:**
+```bash
+# [Your Skill] Credentials
+export API_KEY="your-api-key-here"
+```
+
+**2. Declare in SKILL.md:**
+```markdown
+## Dependencies
+
+| Skill | Path | Purpose |
+|-------|------|---------|
+| credential-setup | `credential-setup/SKILL.md` | Configure [Service] credentials |
+
+## Workflow
+
+### 1. Authenticate
+- Read credential-setup skill
+- Ensure .credentials exists for [Service] access
+- Alternative: Use environment variables or CLI args
+```
+
+**3. Let workflow handle setup:**
+- credential-setup is read and invoked when workflow requires credentials
+- No explicit "automatic" or "manual" paths documented
+- Single unified workflow
+
+### Example: bitbucket-repo-lookup
+
+See `bitbucket-repo-lookup/SKILL.md` for reference implementation using Dependencies/Workflow pattern.
+
+### Benefits
+
+- ✅ Declarative dependency specification
+- ✅ Consistent with skill orchestration patterns
+- ✅ No prescriptive claims about Claude behavior
+- ✅ Single workflow path (not automatic vs manual)
+
+See `credential-setup/SKILL.md` and `credential-setup/references/usage-guide.md` for complete documentation.
