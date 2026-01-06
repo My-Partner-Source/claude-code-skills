@@ -11,6 +11,8 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [code-journey-documenter](#code-journey-documenter) | Transform sessions into book chapters | `/code-journey-documenter` |
 | [social-media-poster](#social-media-poster) | Convert insights into social posts | `/social-media-poster` |
 | [bitbucket-repo-lookup](#bitbucket-repo-lookup) | List and clone Bitbucket repositories | `/bitbucket-repo-lookup` |
+| [vpn-check](#vpn-check) | Verify VPN connectivity before internal access | `/vpn-check` |
+| [credential-setup](#credential-setup) | Interactive credential configuration helper | `/credential-setup` |
 
 ## Installation
 
@@ -231,6 +233,85 @@ See `bitbucket-repo-lookup/SKILL.md` for complete documentation.
 
 ---
 
+## VPN Check
+
+Verify VPN connectivity by checking if internal hostnames can be resolved via DNS. Use standalone or as a prerequisite for skills requiring internal network access.
+
+### Core Philosophy
+
+Fast, reliable VPN detection without requiring authentication or service availability. DNS resolution is the simplest indicator of network connectivity.
+
+### Quick Start
+
+```bash
+# First run prompts for configuration
+python vpn-check/scripts/check_vpn.py
+
+# After setup, check status
+python vpn-check/scripts/check_vpn.py
+
+# Quiet mode for scripting
+python vpn-check/scripts/check_vpn.py --quiet
+```
+
+### Configuration
+
+On first run, the skill prompts for:
+- **Internal hostname** — A hostname only resolvable when on VPN
+- **Expected IP** (optional) — For extra validation
+
+Configuration is stored at `~/.claude/skills/vpn-check/.vpn-config` (never committed to git).
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | VPN connected |
+| 1 | VPN not connected |
+| 2 | Configuration error |
+
+### Skill Stacking
+
+Other skills can use vpn-check as a prerequisite. For example, `bitbucket-repo-lookup` automatically checks VPN status before accessing Bitbucket Server instances.
+
+See `vpn-check/SKILL.md` for complete documentation.
+
+---
+
+## Credential Setup
+
+Interactive helper for setting up credentials from `.credentials.example` templates.
+
+### Core Philosophy
+
+Security through separation: Credentials should never be committed to version control. This skill helps users create `.credentials` files from templates through interactive prompts.
+
+### Quick Start
+
+```bash
+# Set up credentials for a skill
+python credential-setup/scripts/setup_credentials.py --skill bitbucket-repo-lookup
+
+# Preview without creating
+python credential-setup/scripts/setup_credentials.py --skill bitbucket-repo-lookup --dry-run
+```
+
+### What It Does
+
+1. Locates `.credentials.example` for the specified skill
+2. Parses bash `export` statements to identify required variables
+3. Prompts interactively for each credential (with password masking)
+4. Creates `.credentials` file with proper permissions (600)
+5. Validates against `.gitignore` patterns
+
+### Integration
+
+Skills requiring credentials declare `credential-setup` as a dependency and include a `.credentials.example` template.
+
+See `credential-setup/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -242,6 +323,8 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | code-journey-documenter | `~/dev/personal/books/code-with-claude` |
 | social-media-poster | `~/dev/personal/social-posts` |
 | bitbucket-repo-lookup | `~/repos` (clone destination) |
+| vpn-check | `~/.claude/skills/vpn-check/.vpn-config` |
+| credential-setup | Creates `.credentials` in skill's `references/` directory |
 
 ### Directory Structure (Book)
 
@@ -279,6 +362,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 ```
 claude-code-skills/
 ├── README.md
+├── AGENTS.md                             # AI assistant context
 ├── LICENSE
 ├── .gitignore
 │
@@ -312,17 +396,32 @@ claude-code-skills/
 │   └── scripts/
 │       └── validate_post.py              # Post validator
 │
-└── bitbucket-repo-lookup/
+├── bitbucket-repo-lookup/
+│   ├── SKILL.md                          # Skill definition
+│   ├── assets/
+│   │   └── templates/
+│   │       ├── repo-list.md              # Repository listing template
+│   │       └── clone-summary.md          # Clone summary template
+│   ├── references/
+│   │   ├── config.md                     # Path and auth configuration
+│   │   ├── api-guide.md                  # Bitbucket API reference
+│   │   └── .credentials.example          # Credentials template
+│   └── scripts/
+│       └── bitbucket_api.py              # API helper script
+│
+├── vpn-check/
+│   ├── SKILL.md                          # Skill definition
+│   ├── references/
+│   │   └── .vpn-config.example           # Configuration template
+│   └── scripts/
+│       └── check_vpn.py                  # VPN connectivity checker
+│
+└── credential-setup/
     ├── SKILL.md                          # Skill definition
-    ├── assets/
-    │   └── templates/
-    │       ├── repo-list.md              # Repository listing template
-    │       └── clone-summary.md          # Clone summary template
     ├── references/
-    │   ├── config.md                     # Path and auth configuration
-    │   └── api-guide.md                  # Bitbucket API reference
+    │   └── usage-guide.md                # Integration guide
     └── scripts/
-        └── bitbucket_api.py              # API helper script
+        └── setup_credentials.py          # Interactive credential setup
 ```
 
 ---
