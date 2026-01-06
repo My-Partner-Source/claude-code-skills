@@ -1,7 +1,7 @@
 ---
 name: deployment-plan-checker
 description: Check deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries. Use when user asks to check/review/audit a deployment plan URL, verify team deployment readiness, or check completeness for QA/UAT/PROD environments.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Deployment Plan Checker
@@ -16,20 +16,36 @@ Check deployment plans on Confluence to verify team Bamboo entry completeness.
 - Only show entries where Engineering Lead matches a configured team member
 - When a section is empty, that means configured team members have NO entries (not ready)
 
-## PROD vs UAT/QA Comparison
-
-When checking a **PROD deployment plan**, the expectation is:
-
-1. **PROD should mirror UAT** — All entries from UAT should be copied to PROD
-2. **Empty sections = NOT READY** — If MySQL Scripts or Bamboo Items are empty but UAT has entries, PROD is incomplete
-3. **Compare against UAT** — When PROD is empty/incomplete, fetch the corresponding UAT plan to show what's missing
+## Environment Comparison Logic
 
 ### Deployment Plan Hierarchy
 ```
-QA (sprint builds) → UAT (release candidate) → PROD (production)
+QA (source) → UAT (mirrors QA) → PROD (mirrors UAT)
 ```
 
-When user asks to "check EVV 8.52" or similar version:
+**There is no DEV plan.** QA is the starting point.
+
+### Comparison Rules
+
+| Checking | Compare Against | If Empty/Incomplete |
+|----------|-----------------|---------------------|
+| **PROD** | UAT | Fetch UAT, show missing entries |
+| **UAT** | QA | Fetch QA, show missing entries |
+| **QA** | (none) | QA is the source — report as-is |
+
+### PROD Plans
+- **PROD should mirror UAT** — All entries from UAT should be copied to PROD
+- **Empty sections = NOT READY** — If MySQL Scripts or Bamboo Items are empty but UAT has entries, PROD is incomplete
+
+### UAT Plans
+- **UAT should mirror QA** — All entries from QA should be copied to UAT
+- **Empty sections = NOT READY** — If MySQL Scripts or Bamboo Items are empty but QA has entries, UAT is incomplete
+
+### QA Plans
+- **QA is the source** — No upstream comparison needed
+- Report team entries as complete/incomplete based on field validation only
+
+### Version Requests (e.g., "check EVV 8.52")
 1. Search for the PROD deployment plan for that version
 2. If PROD sections are empty, also fetch UAT to show expected entries
 3. Report what's missing from PROD compared to UAT
@@ -118,12 +134,19 @@ For each team member entry found:
 | Jira Item(s) | Jira key |
 | Rollback Link | URL or N/A |
 
-### Step 6: Compare PROD vs UAT (if applicable)
+### Step 6: Compare Against Upstream (if applicable)
 
-If checking PROD and sections are empty:
-1. Fetch corresponding UAT plan
+**For PROD plans** — If sections are empty/incomplete:
+1. Fetch corresponding UAT plan for the same version
 2. Extract team member entries from UAT
 3. Report these as **"Missing from PROD (expected from UAT)"**
+
+**For UAT plans** — If sections are empty/incomplete:
+1. Fetch corresponding QA plan for the same version
+2. Extract team member entries from QA
+3. Report these as **"Missing from UAT (expected from QA)"**
+
+**For QA plans** — No upstream comparison (QA is the source)
 
 ### Step 7: Generate Report
 
@@ -138,21 +161,21 @@ If checking PROD and sections are empty:
 | Status | Team Member | Jira | File/Component |
 |--------|-------------|------|----------------|
 | ✅ | Name | PROJ-123 | filename.sql |
-| ❌ Missing | Name | PROJ-456 | (expected from UAT) |
+| ❌ Missing | Name | PROJ-456 | (expected from UAT/QA) |
 
 ### Bamboo Items
 | Status | Team Member | Component | Jira |
 |--------|-------------|-----------|------|
 | ✅ Complete | Name | service-name | PROJ-123 |
 | ⚠️ Incomplete | Name | service | PROJ-456 | Missing: Rollback Link |
-| ❌ Missing | Name | service | (expected from UAT) |
+| ❌ Missing | Name | service | (expected from UAT/QA) |
 
 ### Summary
 - Team members in config: X
 - Entries found: Y
 - Complete: Z
 - Incomplete: W
-- Missing from PROD: V
+- Missing from upstream: V
 - **Status: ✅ READY** or **❌ NOT READY**
 ```
 
@@ -172,7 +195,7 @@ Claude:
 5. Reports: "PROD is NOT READY - missing X entries from UAT"
 ```
 
-### Check a specific environment
+### Check a specific UAT environment
 ```
 User: Check UAT20260106
 
@@ -180,7 +203,19 @@ Claude:
 1. Searches for "UAT20260106"
 2. Fetches page
 3. Filters for configured team members only
-4. Reports complete/incomplete entries for team
+4. If sections are empty, fetches QA plan for comparison
+5. Reports complete/incomplete/missing entries for team
+```
+
+### Check a specific QA environment
+```
+User: Check QA20260107
+
+Claude:
+1. Searches for "QA20260107"
+2. Fetches page
+3. Filters for configured team members only
+4. Reports complete/incomplete entries (QA is source, no upstream comparison)
 ```
 
 ### Check with URL
@@ -200,7 +235,10 @@ Claude:
 | Case | Handling |
 |------|----------|
 | Empty PROD plan | Fetch UAT, report missing entries |
+| Empty UAT plan | Fetch QA, report missing entries |
+| Empty QA plan | Report "No entries for configured team members" (QA is source) |
 | No team entries in plan | Report "No entries for configured team members" |
 | Team member in multiple entries | Report all entries for that member |
 | Non-team members in plan | **Ignore completely** — do not report |
 | PROD has entries but UAT has more | Report delta as missing |
+| UAT has entries but QA has more | Report delta as missing |
