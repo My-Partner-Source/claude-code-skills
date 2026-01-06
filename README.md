@@ -20,18 +20,26 @@ A collection of Claude Code skills to streamline your development workflow: docu
 1. Clone the repository:
    ```bash
    git clone https://github.com/My-Partner-Source/claude-code-skills.git
+   cd claude-code-skills
    ```
 
-2. Add to your Claude Code skills directory:
+2. Install individual skills to `~/.claude/skills/`:
    ```bash
-   # Option 1: Symlink (recommended for development)
-   ln -s /path/to/claude-code-skills ~/.claude/skills/claude-code-skills
+   # Install a specific skill
+   cp -r code-journey-documenter ~/.claude/skills/
+   cp -r social-media-poster ~/.claude/skills/
+   cp -r bitbucket-repo-lookup ~/.claude/skills/
+   cp -r vpn-check ~/.claude/skills/
+   cp -r credential-setup ~/.claude/skills/
+   cp -r deployment-plan-checker ~/.claude/skills/
 
-   # Option 2: Copy
-   cp -r /path/to/claude-code-skills ~/.claude/skills/
+   # Or install all skills at once
+   for skill in */; do
+     [ -f "$skill/SKILL.md" ] && cp -r "$skill" ~/.claude/skills/
+   done
    ```
 
-3. Skills are now available in Claude Code via their slash commands.
+3. Skills are now available in Claude Code via their slash commands (e.g., `/vpn-check`).
 
 ---
 
