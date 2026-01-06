@@ -1,0 +1,5 @@
+# Team configuration contains names - do not commit
+.team-config
+
+# Credentials - do not commit  
+.credentials

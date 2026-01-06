@@ -13,6 +13,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [bitbucket-repo-lookup](#bitbucket-repo-lookup) | List and clone Bitbucket repositories | `/bitbucket-repo-lookup` |
 | [vpn-check](#vpn-check) | Verify VPN connectivity before internal access | `/vpn-check` |
 | [credential-setup](#credential-setup) | Interactive credential configuration helper | `/credential-setup` |
+| [deployment-plan-checker](#deployment-plan-checker) | Verify team Bamboo entries in deployment plans | `/deployment-plan-checker` |
 
 ## Installation
 
@@ -312,6 +313,83 @@ See `credential-setup/SKILL.md` for complete documentation.
 
 ---
 
+## Deployment Plan Checker
+
+Check FUSE EVV deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries.
+
+### Core Philosophy
+
+Automate the tedious process of checking deployment readiness. Instead of manually scanning Confluence pages for your team's entries, let Claude parse the tables and generate a status report.
+
+### Quick Start
+
+1. **Verify VPN Connection** (required):
+   ```
+   /vpn-check
+   ```
+   Must be on VPN to access hhaxsupport.atlassian.net
+
+2. **Configure Atlassian MCP** (required):
+   - Run `/mcp` in Claude Code
+   - Authenticate with your Atlassian account
+   - Ensure you select the correct Atlassian site during OAuth
+
+3. **Set Up Team Config**:
+   ```bash
+   cd ~/.claude/skills/deployment-plan-checker/references
+   cp .team-config.example .team-config
+   # Edit with team member names (one per line)
+   ```
+
+4. **Set Up Credentials**:
+   ```bash
+   cp .credentials.example .credentials
+   # Edit with your Atlassian cloudId (UUID format)
+   # Find cloudId via: mcp__atlassian__getAccessibleAtlassianResources()
+   ```
+
+5. **Check a Deployment Plan**:
+   ```
+   "Check the deployment plan at https://hhaxsupport.atlassian.net/wiki/spaces/FD/pages/..."
+   "Is my team ready for the QA20260107 deployment?"
+   ```
+
+### What It Checks
+
+For each team member in your config, the skill:
+
+1. **Finds their entries** in the "Bamboos" section
+2. **Validates completeness** of required fields:
+   - Engineering Lead, DevOps, Component/Service
+   - Build Link (with env/build info)
+   - Config Changes (Y/N/New)
+   - Health Checks, Dependencies, Jira Items, Rollback Link
+3. **Generates a report** with complete/incomplete/missing entries
+
+### Report Output
+
+```markdown
+## Deployment Plan Check: QA20260107 (Jan 7, 2026)
+
+### Bamboo Entry Status
+#### ✅ Complete Entries
+| Lead | Component | Jira |
+|------|-----------|------|
+| John Lu | intake-visit-gateway | SPD-6156 |
+
+#### ❌ Incomplete Entries (Action Required)
+| Lead | Component | Jira | Missing Fields |
+|------|-----------|------|----------------|
+| Jane Doe | other-service | SPD-5678 | Build Link, Rollback Link |
+
+### Summary
+- **Status: ✅ READY** or **❌ NOT READY**
+```
+
+See `deployment-plan-checker/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -325,6 +403,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | bitbucket-repo-lookup | `~/repos` (clone destination) |
 | vpn-check | `~/.claude/skills/vpn-check/.vpn-config` |
 | credential-setup | Creates `.credentials` in skill's `references/` directory |
+| deployment-plan-checker | `~/.claude/skills/deployment-plan-checker/references/` |
 
 ### Directory Structure (Book)
 
@@ -416,12 +495,19 @@ claude-code-skills/
 │   └── scripts/
 │       └── check_vpn.py                  # VPN connectivity checker
 │
-└── credential-setup/
+├── credential-setup/
+│   ├── SKILL.md                          # Skill definition
+│   ├── references/
+│   │   └── usage-guide.md                # Integration guide
+│   └── scripts/
+│       └── setup_credentials.py          # Interactive credential setup
+│
+└── deployment-plan-checker/
     ├── SKILL.md                          # Skill definition
-    ├── references/
-    │   └── usage-guide.md                # Integration guide
-    └── scripts/
-        └── setup_credentials.py          # Interactive credential setup
+    └── references/
+        ├── .team-config.example          # Team member template
+        ├── .credentials.example          # Atlassian cloudId template
+        └── .gitignore                    # Protects credentials
 ```
 
 ---

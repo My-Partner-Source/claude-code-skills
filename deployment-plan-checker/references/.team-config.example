@@ -1,0 +1,8 @@
+# Team members to filter for in deployment plans
+# One name per line, exactly as they appear in Confluence/Jira
+# Lines starting with # are ignored
+#
+# Example:
+# John Smith
+# Jane Doe
+# Bob Johnson
