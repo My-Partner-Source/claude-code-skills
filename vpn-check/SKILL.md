@@ -26,7 +26,7 @@ VPN Check - First Time Setup
 This skill checks VPN connectivity by verifying that internal
 hostnames can be resolved via DNS.
 
-Internal hostname to check (e.g., internal.example.com): rabbit-admin.rd.us-east-1.sandata.com
+Internal hostname to check (e.g., internal.example.com): internal.yourcompany.com
 
 Optional: Expected IP address for extra validation
   Leave empty to skip (any resolved IP will be accepted)
@@ -97,14 +97,14 @@ def check_vpn_prerequisite():
 **Connected:**
 ```
 VPN Connected
-  Host: rabbit-admin.rd.us-east-1.sandata.com
+  Host: internal.yourcompany.com
   IP: 172.16.140.176
 ```
 
 **Not Connected:**
 ```
 VPN Not Connected
-  Could not resolve: rabbit-admin.rd.us-east-1.sandata.com
+  Could not resolve: internal.yourcompany.com
 
   Please connect to your VPN and try again.
 ```
@@ -122,7 +122,7 @@ The `.vpn-config` file supports these settings:
 
 Example config:
 ```bash
-export VPN_CHECK_HOST="rabbit-admin.rd.us-east-1.sandata.com"
+export VPN_CHECK_HOST="internal.yourcompany.com"
 export VPN_CHECK_EXPECTED_IP="172.16.140.176"
 export VPN_CHECK_TIMEOUT="5"
 ```

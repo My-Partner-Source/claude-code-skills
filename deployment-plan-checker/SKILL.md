@@ -1,16 +1,16 @@
 ---
 name: deployment-plan-checker
-description: Check FUSE EVV deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries. Use when user asks to check/review/audit a deployment plan URL, verify team deployment readiness, or check completeness for QA/UAT/PROD environments. Supports hhaxsupport.atlassian.net Confluence deployment pages.
+description: Check deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries. Use when user asks to check/review/audit a deployment plan URL, verify team deployment readiness, or check completeness for QA/UAT/PROD environments.
 version: 1.0.0
 ---
 
 # Deployment Plan Checker
 
-Check FUSE EVV deployment plans on Confluence to verify team Bamboo entry completeness.
+Check deployment plans on Confluence to verify team Bamboo entry completeness.
 
 ## Prerequisites
 
-- **VPN connected** — Run `/vpn-check` first (required to access hhaxsupport.atlassian.net)
+- **VPN connected** — Run `/vpn-check` first (required to access yourcompany.atlassian.net)
 - **Atlassian MCP** must be configured and authenticated
 - **Team config** must exist at `references/.team-config`
 - **Credentials** must exist at `references/.credentials` with cloudId
@@ -77,8 +77,8 @@ If either file is missing, stop and guide user through setup.
 From the user-provided URL or search term, extract the page ID:
 
 **URL patterns:**
-- Full URL: `https://hhaxsupport.atlassian.net/wiki/spaces/FD/pages/123456789/Title` → pageId: `123456789`
-- Tiny URL: `https://hhaxsupport.atlassian.net/wiki/x/AbCdEf` → needs resolution via search
+- Full URL: `https://yourcompany.atlassian.net/wiki/spaces/FD/pages/123456789/Title` → pageId: `123456789`
+- Tiny URL: `https://yourcompany.atlassian.net/wiki/x/AbCdEf` → needs resolution via search
 - Page ID only: `123456789` → use directly
 - Search term: `"QA20260107"` → search Confluence
 
@@ -130,7 +130,7 @@ This is a table with columns:
 Store as `teamItems[]`:
 ```json
 [
-  {"key": "SPD-1234", "summary": "Feature description", "assignee": "John Smith", "status": "DEPLOYMENT READY"}
+  {"key": "PROJ-1234", "summary": "Feature description", "assignee": "John Smith", "status": "DEPLOYMENT READY"}
 ]
 ```
 
@@ -158,7 +158,7 @@ A Bamboo entry is **COMPLETE** when ALL required columns have values:
 | Config Changes | Y, N, or New |
 | Health Checks | URL or N/A |
 | Dependencies | N or dependency list |
-| Jira Item(s) | Jira key (e.g., SPD-1234) |
+| Jira Item(s) | Jira key (e.g., PROJ-1234) |
 | Rollback Link | URL |
 
 **Classify each entry:**
@@ -179,23 +179,23 @@ Output a structured report:
 ### Team Items in Release Highlights
 | Jira | Summary | Assignee | Status |
 |------|---------|----------|--------|
-| SPD-1234 | Feature description | John Smith | DEPLOYMENT READY |
+| PROJ-1234 | Feature description | John Smith | DEPLOYMENT READY |
 
 ### Bamboo Entry Status
 
 #### Complete Entries
 | # | Lead | Component | Jira |
 |---|------|-----------|------|
-| 1 | John Smith | service-name | SPD-1234 |
+| 1 | John Smith | service-name | PROJ-1234 |
 
 #### Incomplete Entries (Action Required)
 | # | Lead | Component | Jira | Missing Fields |
 |---|------|-----------|------|----------------|
-| 5 | Jane Doe | other-service | SPD-5678 | Build Link, Rollback Link |
+| 5 | Jane Doe | other-service | PROJ-5678 | Build Link, Rollback Link |
 
 #### Missing Bamboo Entries
 Items in Release Highlights with no corresponding Bamboo entry:
-- SPD-9999: "Another feature" (Assignee: Bob)
+- PROJ-9999: "Another feature" (Assignee: Bob)
 
 ### Summary
 - Team items in Release Highlights: X
@@ -223,7 +223,7 @@ Items in Release Highlights with no corresponding Bamboo entry:
 ## Example Usage
 
 ```
-User: Check the deployment plan at https://hhaxsupport.atlassian.net/wiki/spaces/FD/pages/123456789/QA-Deployment
+User: Check the deployment plan at https://yourcompany.atlassian.net/wiki/spaces/FD/pages/123456789/QA-Deployment
 
 Claude: [Loads config, extracts pageId 123456789, fetches page, parses tables, generates report]
 ```

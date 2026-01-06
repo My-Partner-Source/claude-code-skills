@@ -323,7 +323,7 @@ See `credential-setup/SKILL.md` for complete documentation.
 
 ## Deployment Plan Checker
 
-Check FUSE EVV deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries.
+Check deployment plans on Atlassian Confluence to verify team members have completed their Bamboo entries.
 
 ### Core Philosophy
 
@@ -335,7 +335,7 @@ Automate the tedious process of checking deployment readiness. Instead of manual
    ```
    /vpn-check
    ```
-   Must be on VPN to access hhaxsupport.atlassian.net
+   Must be on VPN to access yourcompany.atlassian.net
 
 2. **Configure Atlassian MCP** (required):
    - Run `/mcp` in Claude Code
@@ -358,7 +358,7 @@ Automate the tedious process of checking deployment readiness. Instead of manual
 
 5. **Check a Deployment Plan**:
    ```
-   "Check the deployment plan at https://hhaxsupport.atlassian.net/wiki/spaces/FD/pages/..."
+   "Check the deployment plan at https://yourcompany.atlassian.net/wiki/spaces/FD/pages/..."
    "Is my team ready for the QA20260107 deployment?"
    ```
 
@@ -383,12 +383,12 @@ For each team member in your config, the skill:
 #### ✅ Complete Entries
 | Lead | Component | Jira |
 |------|-----------|------|
-| John Lu | intake-visit-gateway | SPD-6156 |
+| Alice Smith | my-service | PROJ-1234 |
 
 #### ❌ Incomplete Entries (Action Required)
 | Lead | Component | Jira | Missing Fields |
 |------|-----------|------|----------------|
-| Jane Doe | other-service | SPD-5678 | Build Link, Rollback Link |
+| Bob Jones | another-service | PROJ-5678 | Build Link, Rollback Link |
 
 ### Summary
 - **Status: ✅ READY** or **❌ NOT READY**
