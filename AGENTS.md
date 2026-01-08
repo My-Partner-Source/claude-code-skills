@@ -10,6 +10,7 @@ This file provides AI coding assistants with essential context about the codebas
 2. **social-media-poster** - Convert development insights into authentic X/Twitter and LinkedIn posts
 3. **bitbucket-repo-lookup** - Discover, search, and clone Bitbucket repositories without leaving your development environment
 4. **vpn-check** - Verify VPN connectivity before accessing internal resources (prerequisite for other skills)
+5. **mysql-query-runner** - Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -86,12 +87,20 @@ claude-code-skills/
 │   └── scripts/
 │       └── bitbucket_api.py              # Bitbucket Cloud API wrapper (21KB)
 │
-└── vpn-check/
+├── vpn-check/
+│   ├── SKILL.md                          # Skill definition
+│   ├── references/
+│   │   └── .vpn-config.example           # Configuration template (safe to commit)
+│   └── scripts/
+│       └── check_vpn.py                  # VPN connectivity checker (4KB)
+│
+└── mysql-query-runner/
     ├── SKILL.md                          # Skill definition
     ├── references/
-    │   └── .vpn-config.example           # Configuration template (safe to commit)
+    │   ├── .credentials.example          # Environment credentials template
+    │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── check_vpn.py                  # VPN connectivity checker (4KB)
+        └── mysql_query.py                # Query executor with safety checks (13KB)
 ```
 
 ---
@@ -104,6 +113,7 @@ claude-code-skills/
 | **social-media-poster** | Validate posts for X/LinkedIn | `validate_post.py`<br>`voice-guide.md`<br>`platform-*.md` | `/social-media-poster` |
 | **bitbucket-repo-lookup** | List/search/clone Bitbucket repos | `bitbucket_api.py`<br>`config.md`<br>`api-guide.md` | `/bitbucket-repo-lookup` |
 | **vpn-check** | Verify VPN connectivity via DNS | `check_vpn.py`<br>`.vpn-config.example` | `/vpn-check` |
+| **mysql-query-runner** | Execute MySQL queries with env switching | `mysql_query.py`<br>`.credentials.example` | `/mysql-query-runner` |
 
 ---
 
@@ -329,6 +339,63 @@ if result.returncode != 0:
     print("VPN not connected")
     sys.exit(1)
 ```
+
+---
+
+### mysql_query.py (mysql-query-runner)
+
+Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails.
+
+**Requires external dependency:** `pip install mysql-connector-python`
+
+```bash
+# Basic query with environment
+python mysql-query-runner/scripts/mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
+
+# Show tables
+python mysql-query-runner/scripts/mysql_query.py --env QA -q "SHOW TABLES"
+
+# Export to CSV
+python mysql-query-runner/scripts/mysql_query.py --env UAT -q "SELECT * FROM logs" --format csv --output logs.csv
+
+# Dry run (preview without executing)
+python mysql-query-runner/scripts/mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
+
+# Show config (verify connection)
+python mysql-query-runner/scripts/mysql_query.py --env DEV --show-config
+```
+
+**Safety Features:**
+
+| Feature | Behavior |
+|---------|----------|
+| **Write Detection** | Detects INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE |
+| **Confirmation** | Writes require explicit confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **LIMIT Warning** | Warns if SELECT has no LIMIT clause |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--env`, `-e` | Target: DEV, QA, UAT, PROD (prompts if omitted) |
+| `--query`, `-q` | SQL query (interactive if omitted) |
+| `--format`, `-f` | Output: markdown (default), csv, json |
+| `--output`, `-o` | Write results to file |
+| `--yes`, `-y` | Skip SELECT LIMIT warning |
+| `--dry-run` | Preview without executing |
+| `--show-config` | Display connection settings |
+
+**Multi-Database Access:**
+DATABASE is optional. Leave `MYSQL_{ENV}_DATABASE=""` to access multiple databases using fully qualified table names:
+```sql
+SELECT * FROM intfstagedb.users;
+SELECT * FROM metadataconfdb.config WHERE id = 1;
+```
+
+**Exit codes:**
+- `0` = success
+- `1` = error
 
 ---
 
@@ -937,6 +1004,7 @@ When contributing to this repository:
 | Check VPN status | `python vpn-check/scripts/check_vpn.py` |
 | List Bitbucket repos | `python bitbucket-repo-lookup/scripts/bitbucket_api.py list` |
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
+| Run MySQL query | `python mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
 
 ### Configuration Files
 
@@ -946,6 +1014,7 @@ When contributing to this repository:
 | social-media-poster | `references/config.md` | Posts repository structure |
 | vpn-check | `~/.claude/skills/vpn-check/.vpn-config` | Internal hostname for VPN detection |
 | bitbucket-repo-lookup | `references/config.md` | Workspace, clone settings (credentials in `.credentials`) |
+| mysql-query-runner | `references/.credentials` | Database credentials for DEV/QA/UAT/PROD |
 
 ### Important Files
 
@@ -959,11 +1028,19 @@ When contributing to this repository:
 
 ---
 
-**Last Updated:** 2026-01-06
-**Version:** 1.2.0
+**Last Updated:** 2026-01-08
+**Version:** 1.3.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-06 v1.2.0):**
+**Recent Changes (2026-01-08 v1.3.0):**
+- Added mysql-query-runner skill for MySQL database queries
+- Supports DEV/QA/UAT/PROD environment switching
+- Safety guardrails: write confirmation, PROD double-confirm
+- Multi-database access (optional DATABASE in credentials)
+- Markdown/CSV/JSON output formats
+- VPN prerequisite via skill stacking
+
+**Previous Changes (2026-01-06 v1.2.0):**
 - Added vpn-check skill for VPN connectivity verification
 - Implemented skill stacking pattern (vpn-check → bitbucket-repo-lookup)
 - VPN check auto-runs for Bitbucket Server instances

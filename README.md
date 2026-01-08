@@ -14,6 +14,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [vpn-check](#vpn-check) | Verify VPN connectivity before internal access | `/vpn-check` |
 | [credential-setup](#credential-setup) | Interactive credential configuration helper | `/credential-setup` |
 | [deployment-plan-checker](#deployment-plan-checker) | Verify team Bamboo entries in deployment plans | `/deployment-plan-checker` |
+| [mysql-query-runner](#mysql-query-runner) | Execute MySQL queries against DEV/QA/UAT/PROD | `/mysql-query-runner` |
 
 ## Installation
 
@@ -32,6 +33,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r vpn-check ~/.claude/skills/
    cp -r credential-setup ~/.claude/skills/
    cp -r deployment-plan-checker ~/.claude/skills/
+   cp -r mysql-query-runner ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -398,6 +400,92 @@ See `deployment-plan-checker/SKILL.md` for complete documentation.
 
 ---
 
+## MySQL Query Runner
+
+Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails and environment switching.
+
+### Core Philosophy
+
+Database operations should be safe by default. Writes require confirmation, PROD writes require extra caution, and environment must be explicit to prevent accidental cross-environment queries.
+
+### Quick Start
+
+1. **Verify VPN Connection** (required):
+   ```
+   /vpn-check
+   ```
+
+2. **Install MySQL Connector**:
+   ```bash
+   pip install mysql-connector-python
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/mysql-query-runner/references
+   cp .credentials.example .credentials
+   # Edit with your database connection details
+   chmod 600 .credentials
+   ```
+
+4. **Run Queries**:
+   ```
+   "Show me the users table in DEV"
+   "How many orders are in QA today?"
+   "Run SELECT VERSION() on UAT"
+   ```
+
+### Safety Features
+
+| Feature | Behavior |
+|---------|----------|
+| **Environment Required** | Must specify DEV/QA/UAT/PROD (prompts if ambiguous) |
+| **Write Confirmation** | INSERT/UPDATE/DELETE require explicit confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **LIMIT Warning** | Warns if SELECT has no LIMIT clause |
+
+### Multi-Database Access
+
+DATABASE is optional in credentials. Leave empty to access multiple databases:
+
+```sql
+-- Use fully qualified table names
+SELECT * FROM intfstagedb.users;
+SELECT * FROM metadataconfdb.config WHERE id = 1;
+
+-- Or switch databases
+USE intfstagedb;
+SELECT * FROM users;
+```
+
+### Script Usage
+
+```bash
+# Basic query
+python mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
+
+# Export to CSV
+python mysql_query.py --env QA -q "SELECT * FROM logs" --format csv --output logs.csv
+
+# Dry run (preview without executing)
+python mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
+
+# Show config
+python mysql_query.py --env DEV --show-config
+```
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `markdown` (default) | Clean tables for chat display |
+| `csv` | Export for spreadsheets |
+| `json` | Programmatic processing |
+
+See `mysql-query-runner/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -412,6 +500,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | vpn-check | `~/.claude/skills/vpn-check/.vpn-config` |
 | credential-setup | Creates `.credentials` in skill's `references/` directory |
 | deployment-plan-checker | `~/.claude/skills/deployment-plan-checker/references/` |
+| mysql-query-runner | `~/.claude/skills/mysql-query-runner/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -510,12 +599,20 @@ claude-code-skills/
 │   └── scripts/
 │       └── setup_credentials.py          # Interactive credential setup
 │
-└── deployment-plan-checker/
+├── deployment-plan-checker/
+│   ├── SKILL.md                          # Skill definition
+│   └── references/
+│       ├── .team-config.example          # Team member template
+│       ├── .credentials.example          # Atlassian cloudId template
+│       └── .gitignore                    # Protects credentials
+│
+└── mysql-query-runner/
     ├── SKILL.md                          # Skill definition
-    └── references/
-        ├── .team-config.example          # Team member template
-        ├── .credentials.example          # Atlassian cloudId template
-        └── .gitignore                    # Protects credentials
+    ├── references/
+    │   ├── .credentials.example          # Database credentials template
+    │   └── .gitignore                    # Protects credentials
+    └── scripts/
+        └── mysql_query.py                # Query executor with safety checks
 ```
 
 ---
