@@ -1,0 +1,10 @@
+# Credentials - NEVER commit
+.credentials
+
+# Backup files
+*.bak
+*~
+
+# Query result exports
+*.csv
+*.json
