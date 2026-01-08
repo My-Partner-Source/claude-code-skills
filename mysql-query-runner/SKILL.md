@@ -1,7 +1,7 @@
 ---
 name: mysql-query-runner
 description: Execute MySQL queries against DEV/QA/UAT/PROD databases. Supports environment switching, safe write confirmation, and formatted output. Use when user asks to run SQL queries, check database data, or interact with MySQL databases. Requires VPN connectivity.
-version: 1.2.0
+version: 1.3.0
 ---
 
 # MySQL Query Runner
@@ -56,7 +56,7 @@ From user request, detect target:
 
 ### Step 4: Execute Query
 ```bash
-python ~/.claude/skills/mysql-query-runner/scripts/mysql_query.py \
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py \
     --env <ENV> \
     --query "<SQL>"
 ```
@@ -72,22 +72,22 @@ python ~/.claude/skills/mysql-query-runner/scripts/mysql_query.py \
 
 ```bash
 # Basic query
-python mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
 
 # Show tables
-python mysql_query.py --env QA -q "SHOW TABLES"
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env QA -q "SHOW TABLES"
 
 # Skip LIMIT warning for reads
-python mysql_query.py --env UAT -q "SELECT COUNT(*) FROM orders" --yes
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env UAT -q "SELECT COUNT(*) FROM orders" --yes
 
 # Export to CSV
-python mysql_query.py --env DEV -q "SELECT * FROM logs" --format csv --output logs.csv
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT * FROM logs" --format csv --output logs.csv
 
 # Dry run (preview without executing)
-python mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
 
 # Show config (verify connection details)
-python mysql_query.py --env DEV --show-config
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV --show-config
 ```
 
 ### Arguments

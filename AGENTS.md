@@ -353,19 +353,19 @@ cd ~/.claude/skills/mysql-query-runner && bash setup.sh
 
 ```bash
 # Basic query with environment
-python mysql-query-runner/scripts/mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV --query "SELECT * FROM users LIMIT 10"
 
 # Show tables
-python mysql-query-runner/scripts/mysql_query.py --env QA -q "SHOW TABLES"
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env QA -q "SHOW TABLES"
 
 # Export to CSV
-python mysql-query-runner/scripts/mysql_query.py --env UAT -q "SELECT * FROM logs" --format csv --output logs.csv
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env UAT -q "SELECT * FROM logs" --format csv --output logs.csv
 
 # Dry run (preview without executing)
-python mysql-query-runner/scripts/mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env PROD -q "DELETE FROM temp" --dry-run
 
 # Show config (verify connection)
-python mysql-query-runner/scripts/mysql_query.py --env DEV --show-config
+~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV --show-config
 ```
 
 **Safety Features:**
@@ -1007,7 +1007,7 @@ When contributing to this repository:
 | Check VPN status | `python vpn-check/scripts/check_vpn.py` |
 | List Bitbucket repos | `python bitbucket-repo-lookup/scripts/bitbucket_api.py list` |
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
-| Run MySQL query | `python mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
+| Run MySQL query | `~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
 
 ### Configuration Files
 
@@ -1032,10 +1032,15 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-08
-**Version:** 1.4.0
+**Version:** 1.5.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-08 v1.4.0):**
+**Recent Changes (2026-01-08 v1.5.0):**
+- Added auto-re-exec logic: script detects wrong Python and re-executes with venv
+- Updated documentation to use direct execution syntax (no `python` prefix)
+- Fixed shebang being ignored when called with `python3 script.py`
+
+**Previous Changes (2026-01-08 v1.4.0):**
 - Added virtual environment support for mysql-query-runner (PEP 668 compliance)
 - Added setup.sh script for one-time dependency installation
 - Added requirements.txt for mysql-connector-python
