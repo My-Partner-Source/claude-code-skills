@@ -94,12 +94,16 @@ def load_credentials(env: str) -> dict:
                     key = full_key.replace(prefix, "").lower()
                     creds[key] = value
 
-    required = ["host", "user", "password", "database"]
+    required = ["host", "user", "password"]
     missing = [k for k in required if k not in creds or not creds[k]]
     if missing:
         print(f"Error: Missing or empty credentials for {env}: {missing}")
         print(f"\nCheck your .credentials file has all MYSQL_{env}_* values set.")
         sys.exit(1)
+
+    # DATABASE is optional - if not set, user must use fully qualified table names
+    if "database" not in creds or not creds["database"]:
+        creds["database"] = None
 
     # Default port if not specified
     if "port" not in creds:
@@ -201,14 +205,18 @@ def execute_query(creds: dict, query: str, env: str) -> tuple:
     cursor = None
 
     try:
-        conn = mysql.connector.connect(
-            host=creds["host"],
-            port=int(creds.get("port", 3306)),
-            user=creds["user"],
-            password=creds["password"],
-            database=creds["database"],
-            connect_timeout=10,
-        )
+        connect_args = {
+            "host": creds["host"],
+            "port": int(creds.get("port", 3306)),
+            "user": creds["user"],
+            "password": creds["password"],
+            "connect_timeout": 10,
+        }
+        # Only include database if set (allows multi-database access)
+        if creds.get("database"):
+            connect_args["database"] = creds["database"]
+
+        conn = mysql.connector.connect(**connect_args)
 
         cursor = conn.cursor()
         cursor.execute(query)
@@ -331,11 +339,12 @@ Examples:
 
     # Show config if requested
     if args.show_config:
+        db_display = creds['database'] if creds.get('database') else "(not set - use db.table syntax)"
         print(f"\nConfiguration for {env}:")
         print(f"  Host:     {creds['host']}")
         print(f"  Port:     {creds.get('port', '3306')}")
         print(f"  User:     {creds['user']}")
-        print(f"  Database: {creds['database']}")
+        print(f"  Database: {db_display}")
         print(f"  Password: {'*' * len(creds['password'])}")
         if not args.query:
             sys.exit(0)

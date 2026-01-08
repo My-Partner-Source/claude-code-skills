@@ -1,7 +1,7 @@
 ---
 name: mysql-query-runner
 description: Execute MySQL queries against DEV/QA/UAT/PROD databases. Supports environment switching, safe write confirmation, and formatted output. Use when user asks to run SQL queries, check database data, or interact with MySQL databases. Requires VPN connectivity.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # MySQL Query Runner
@@ -158,16 +158,27 @@ Claude:
 
 ---
 
+## Multi-Database Access
+
+DATABASE is optional in credentials. When not set:
+- Use fully qualified table names: `SELECT * FROM intfstagedb.users`
+- Switch databases with: `USE metadataconfdb`
+- Query across databases: `SELECT * FROM db1.a JOIN db2.b ON ...`
+- Run `SHOW DATABASES` to list available databases
+
+Leave `MYSQL_{ENV}_DATABASE=""` in `.credentials` for multi-database access.
+
+---
+
 ## Configuration
 
 ### Credential Structure
-All environments use same database name, different hosts:
 ```
-MYSQL_{ENV}_HOST     - Database hostname
+MYSQL_{ENV}_HOST     - Database hostname (required)
 MYSQL_{ENV}_PORT     - Port (default: 3306)
-MYSQL_{ENV}_USER     - Username
-MYSQL_{ENV}_PASSWORD - Password
-MYSQL_{ENV}_DATABASE - Database name
+MYSQL_{ENV}_USER     - Username (required)
+MYSQL_{ENV}_PASSWORD - Password (required)
+MYSQL_{ENV}_DATABASE - Database name (optional - leave empty for multi-db)
 ```
 
 ### First-Time Setup
