@@ -1,7 +1,7 @@
 ---
 name: mysql-query-runner
 description: Execute MySQL queries against DEV/QA/UAT/PROD databases. Supports environment switching, safe write confirmation, and formatted output. Use when user asks to run SQL queries, check database data, or interact with MySQL databases. Requires VPN connectivity.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # MySQL Query Runner
@@ -25,9 +25,14 @@ Execute MySQL queries with environment switching and safety guardrails.
 - **credential-setup** — Run `/credential-setup mysql-query-runner` if `.credentials` missing
 
 ### Dependencies
+
+**One-time setup** (creates virtual environment and installs mysql-connector-python):
+
 ```bash
-pip install mysql-connector-python
+cd ~/.claude/skills/mysql-query-runner && bash setup.sh
 ```
+
+This creates a `.venv` folder and configures the script to use it automatically.
 
 ---
 

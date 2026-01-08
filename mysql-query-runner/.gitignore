@@ -1,0 +1,10 @@
+# Virtual environment - created by setup.sh
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store

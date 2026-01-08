@@ -346,7 +346,10 @@ if result.returncode != 0:
 
 Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails.
 
-**Requires external dependency:** `pip install mysql-connector-python`
+**One-time setup** (creates virtual environment and installs mysql-connector-python):
+```bash
+cd ~/.claude/skills/mysql-query-runner && bash setup.sh
+```
 
 ```bash
 # Basic query with environment
@@ -1029,10 +1032,16 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-08
-**Version:** 1.3.0
+**Version:** 1.4.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-08 v1.3.0):**
+**Recent Changes (2026-01-08 v1.4.0):**
+- Added virtual environment support for mysql-query-runner (PEP 668 compliance)
+- Added setup.sh script for one-time dependency installation
+- Added requirements.txt for mysql-connector-python
+- Script shebang automatically updated to use venv Python
+
+**Previous Changes (2026-01-08 v1.3.0):**
 - Added mysql-query-runner skill for MySQL database queries
 - Supports DEV/QA/UAT/PROD environment switching
 - Safety guardrails: write confirmation, PROD double-confirm
