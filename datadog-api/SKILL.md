@@ -28,6 +28,16 @@ This skill provides read-only access to your Datadog observability data. Instead
 |-------|------|---------|
 | credential-setup | `credential-setup/SKILL.md` | Configure Datadog API credentials |
 
+## Prerequisites
+
+**One-time setup** (creates virtual environment and installs requests):
+
+```bash
+cd ~/.claude/skills/datadog-api && bash setup.sh
+```
+
+This creates a `.venv` folder and configures the script to use it automatically.
+
 ## Workflow
 
 ### 1. Configure Credentials
@@ -173,8 +183,15 @@ DD_SITE        - Datadog site (optional, default: datadoghq.com)
 ```
 
 ### First-Time Setup
+
+1. **Install dependencies** (creates virtual environment):
 ```bash
-cd datadog-api/references
+cd ~/.claude/skills/datadog-api && bash setup.sh
+```
+
+2. **Configure credentials**:
+```bash
+cd ~/.claude/skills/datadog-api/references
 cp .credentials.example .credentials
 # Edit .credentials with your values
 chmod 600 .credentials  # Secure permissions
@@ -187,6 +204,8 @@ python credential-setup/scripts/setup_credentials.py --skill datadog-api
 
 ## Reference Files
 
+- **setup.sh** - Virtual environment setup script
+- **requirements.txt** - Python dependencies (requests)
 - **references/.credentials.example** - Credential template
 - **scripts/datadog_api.py** - Python API wrapper
 
