@@ -14,6 +14,7 @@ This file provides AI coding assistants with essential context about the codebas
 6. **vault-access** - Retrieve secrets from HashiCorp Vault with KV v1/v2 support
 7. **oracle-query-runner** - Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 8. **datadog-api** - Query Datadog metrics, monitors, dashboards, and events for observability insights
+9. **s3-access** - Access Amazon S3 buckets and objects with multi-profile and region support
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -125,15 +126,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── oracle_query.py               # Query executor with safety checks
 │
-└── datadog-api/
+├── datadog-api/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (requests)
+│   ├── references/
+│   │   ├── .credentials.example          # API key credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── datadog_api.py                # Datadog API wrapper (18KB)
+│
+└── s3-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (requests)
+    ├── requirements.txt                  # Python dependencies (boto3)
     ├── references/
-    │   ├── .credentials.example          # API key credentials template
+    │   ├── .credentials.example          # AWS credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── datadog_api.py                # Datadog API wrapper (18KB)
+        └── s3_access.py                  # S3 access wrapper (15KB)
 ```
 
 ---
@@ -150,6 +161,7 @@ claude-code-skills/
 | **vault-access** | Retrieve secrets from HashiCorp Vault | `vault_access.py`<br>`.credentials.example` | `/vault-access` |
 | **oracle-query-runner** | Execute Oracle queries with env switching | `oracle_query.py`<br>`.credentials.example` | `/oracle-query-runner` |
 | **datadog-api** | Query metrics, monitors, dashboards, events | `datadog_api.py`<br>`.credentials.example` | `/datadog-api` |
+| **s3-access** | Access S3 buckets, upload/download objects | `s3_access.py`<br>`.credentials.example` | `/s3-access` |
 
 ---
 
@@ -618,6 +630,84 @@ python datadog-api/scripts/datadog_api.py dashboard-info --id abc-def-123
 1. CLI arguments (`--api-key`, `--app-key`, `--site`)
 2. Environment variables (`DD_API_KEY`, `DD_APP_KEY`, `DD_SITE`)
 3. `.credentials` file (auto-parsed from `datadog-api/references/.credentials`)
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
+### s3_access.py (s3-access)
+
+Access Amazon S3 buckets and objects with multi-profile and region support.
+
+**One-time setup** (creates virtual environment and installs boto3):
+```bash
+cd ~/.claude/skills/s3-access && bash setup.sh
+```
+
+```bash
+# List all buckets
+~/.claude/skills/s3-access/scripts/s3_access.py buckets
+
+# List objects in a bucket
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket/path/prefix/
+
+# Get object contents
+~/.claude/skills/s3-access/scripts/s3_access.py get my-bucket/path/to/file.txt
+
+# Download to local file
+~/.claude/skills/s3-access/scripts/s3_access.py get my-bucket/file.txt --output local.txt
+
+# Upload a file
+~/.claude/skills/s3-access/scripts/s3_access.py put local.txt my-bucket/remote.txt
+
+# Get object metadata
+~/.claude/skills/s3-access/scripts/s3_access.py info my-bucket/file.txt
+
+# Delete an object
+~/.claude/skills/s3-access/scripts/s3_access.py rm my-bucket/file.txt
+
+# Copy objects
+~/.claude/skills/s3-access/scripts/s3_access.py cp my-bucket/src.txt my-bucket/dest.txt
+
+# Use specific AWS profile
+~/.claude/skills/s3-access/scripts/s3_access.py buckets --profile production
+
+# Use specific region
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket --region eu-west-1
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `buckets` | List all accessible S3 buckets |
+| `ls <bucket>[/prefix]` | List objects with optional prefix filter |
+| `get <bucket/key>` | Get object contents or download to file |
+| `put <local> <bucket/key>` | Upload local file to S3 |
+| `info <bucket/key>` | Get object metadata (size, type, modified) |
+| `rm <bucket/key>` | Delete an object (with confirmation) |
+| `cp <src> <dest>` | Copy object between locations |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--profile`, `-p` | AWS profile name from ~/.aws/credentials |
+| `--region`, `-r` | AWS region (default: us-east-1 or from config) |
+| `--endpoint-url` | Custom endpoint (VPC, LocalStack, MinIO) |
+| `--output`, `-o` | Write get output to local file |
+| `--recursive` | List all objects recursively |
+| `--limit`, `-l` | Limit number of results |
+| `--yes`, `-y` | Skip delete confirmation |
+
+**Credential Resolution** (priority order):
+1. CLI arguments (`--profile`, `--region`, `--endpoint-url`)
+2. Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_PROFILE`)
+3. `.credentials` file (auto-parsed from `s3-access/references/.credentials`)
+4. AWS CLI configuration (`~/.aws/credentials`, `~/.aws/config`)
 
 **Exit codes:**
 - `0` = success
@@ -1235,6 +1325,10 @@ When contributing to this repository:
 | Run Oracle query | `~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env DEV -q "SELECT..."` |
 | List Datadog monitors | `python datadog-api/scripts/datadog_api.py monitors` |
 | Query Datadog metrics | `python datadog-api/scripts/datadog_api.py query --metric system.cpu.user` |
+| List S3 buckets | `~/.claude/skills/s3-access/scripts/s3_access.py buckets` |
+| List S3 objects | `~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket/prefix/` |
+| Download from S3 | `~/.claude/skills/s3-access/scripts/s3_access.py get bucket/key --output file` |
+| Upload to S3 | `~/.claude/skills/s3-access/scripts/s3_access.py put local.txt bucket/remote.txt` |
 
 ### Configuration Files
 
@@ -1248,6 +1342,7 @@ When contributing to this repository:
 | vault-access | `references/.credentials` | Vault address and token |
 | oracle-query-runner | `references/.credentials` | Oracle database credentials for DEV/QA/UAT/PROD |
 | datadog-api | `references/.credentials` | Datadog API and Application keys |
+| s3-access | `references/.credentials` | AWS access keys, region, and endpoint |
 
 ### Important Files
 
@@ -1262,10 +1357,17 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-09
-**Version:** 1.8.0
+**Version:** 1.9.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-09 v1.8.0):**
+**Recent Changes (2026-01-09 v1.9.0):**
+- Added s3-access skill for Amazon S3 operations
+- Supports list, get, put, info, rm, cp commands
+- Multi-profile and region support
+- Custom endpoint support (VPC, LocalStack, MinIO)
+- Credential auto-loading from .credentials file
+
+**Previous Changes (2026-01-09 v1.8.0):**
 - Added datadog-api skill for Datadog observability queries
 - Supports monitors, metrics, dashboards, and events
 - Multi-region support (US1, US3, US5, EU1, AP1, GOV)
