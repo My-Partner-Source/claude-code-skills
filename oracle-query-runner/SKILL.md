@@ -15,7 +15,7 @@ Execute Oracle SQL queries with environment switching and safety guardrails.
 
 **Write Operations Require Confirmation**:
 - SELECT, DESCRIBE, EXPLAIN → Execute freely
-- INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE → Require confirmation
+- INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, MERGE, REPLACE → Require confirmation
 - **PROD writes** → Require typing "PROD" to confirm
 
 ## Prerequisites

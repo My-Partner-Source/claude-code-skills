@@ -10,6 +10,7 @@ Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with:
 
 import argparse
 import csv
+import io
 import json
 import os
 import re
@@ -19,10 +20,9 @@ from pathlib import Path
 
 # Venv auto-detection and re-exec
 # If script is called with system Python instead of venv Python, re-exec with venv
-_SKILL_DIR = Path(__file__).resolve().parent.parent
-_VENV_DIR = _SKILL_DIR / ".venv"
+SKILL_DIR = Path(__file__).resolve().parent.parent
+_VENV_DIR = SKILL_DIR / ".venv"
 _VENV_PYTHON = _VENV_DIR / "bin" / "python3"
-_SETUP_SCRIPT = _SKILL_DIR / "setup.sh"
 
 
 def _is_running_in_venv() -> bool:
@@ -42,7 +42,7 @@ if not _is_running_in_venv():
     else:
         # Venv doesn't exist - prompt to run setup
         print("Error: Virtual environment not found.")
-        print(f"Run setup first: cd {_SKILL_DIR} && bash setup.sh")
+        print(f"Run setup first: cd {SKILL_DIR} && bash setup.sh")
         sys.exit(1)
 
 try:
@@ -53,7 +53,6 @@ except ImportError:
     sys.exit(1)
 
 # Constants
-SKILL_DIR = Path(__file__).resolve().parent.parent
 CREDENTIALS_FILE = SKILL_DIR / "references" / ".credentials"
 VALID_ENVS = ["DEV", "QA", "UAT", "PROD"]
 
@@ -69,6 +68,7 @@ WRITE_PATTERNS = [
     r"^\s*GRANT\b",
     r"^\s*REVOKE\b",
     r"^\s*MERGE\b",
+    r"^\s*REPLACE\b",
 ]
 
 
@@ -185,8 +185,6 @@ def format_markdown_table(columns: list, rows: list, max_width: int = 50) -> str
 
 def format_csv(columns: list, rows: list) -> str:
     """Format results as CSV."""
-    import io
-
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(columns)
@@ -272,9 +270,15 @@ def execute_query(creds: dict, query: str, env: str) -> tuple:
             print("  - Incorrect host/port")
             print("  - Database server is down")
         elif "ORA-12514" in error_str:
-            print("\nService name not found. Check ORACLE_{env}_SERVICE in credentials.")
+            print(f"\nService name not found. Check ORACLE_{env}_SERVICE in credentials.")
+        elif "ORA-12154" in error_str:
+            print(f"\nTNS could not resolve connect identifier. Check ORACLE_{env}_SERVICE.")
         elif "ORA-12170" in error_str:
             print("\nConnection timeout. Check VPN connectivity and host/port.")
+        elif "ORA-28000" in error_str:
+            print(f"\nAccount locked. Contact DBA to unlock the {env} database account.")
+        elif "ORA-01034" in error_str:
+            print("\nOracle not available. The database instance may be down.")
         sys.exit(1)
 
     finally:
