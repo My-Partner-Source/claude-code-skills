@@ -13,6 +13,7 @@ This file provides AI coding assistants with essential context about the codebas
 5. **mysql-query-runner** - Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 6. **vault-access** - Retrieve secrets from HashiCorp Vault with KV v1/v2 support
 7. **oracle-query-runner** - Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails
+8. **datadog-api** - Query Datadog metrics, monitors, dashboards, and events for observability insights
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -35,7 +36,7 @@ This is **not a traditional monolithic application**. Instead, it's a skill mark
 
 **Dependencies:**
 - Python 3 standard library (all skills)
-- `requests` library (bitbucket-repo-lookup only)
+- `requests` library (bitbucket-repo-lookup, datadog-api)
 
 ---
 
@@ -114,15 +115,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── vault_access.py               # Vault secret retrieval (12KB)
 │
-└── oracle-query-runner/
+├── oracle-query-runner/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (oracledb)
+│   ├── references/
+│   │   ├── .credentials.example          # Oracle credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── oracle_query.py               # Query executor with safety checks
+│
+└── datadog-api/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (oracledb)
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
-    │   ├── .credentials.example          # Oracle credentials template
+    │   ├── .credentials.example          # API key credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── oracle_query.py               # Query executor with safety checks
+        └── datadog_api.py                # Datadog API wrapper (18KB)
 ```
 
 ---
@@ -138,6 +149,7 @@ claude-code-skills/
 | **mysql-query-runner** | Execute MySQL queries with env switching | `mysql_query.py`<br>`.credentials.example` | `/mysql-query-runner` |
 | **vault-access** | Retrieve secrets from HashiCorp Vault | `vault_access.py`<br>`.credentials.example` | `/vault-access` |
 | **oracle-query-runner** | Execute Oracle queries with env switching | `oracle_query.py`<br>`.credentials.example` | `/oracle-query-runner` |
+| **datadog-api** | Query metrics, monitors, dashboards, events | `datadog_api.py`<br>`.credentials.example` | `/datadog-api` |
 
 ---
 
@@ -523,6 +535,89 @@ cd ~/.claude/skills/oracle-query-runner && bash setup.sh
 
 **Connection Format:**
 Uses Easy Connect format: `host:port/service_name`
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
+### datadog_api.py (datadog-api)
+
+Query Datadog metrics, monitors, dashboards, and events for observability insights.
+
+**One-time setup** (creates virtual environment and installs requests):
+```bash
+cd ~/.claude/skills/datadog-api && bash setup.sh
+```
+
+```bash
+# List all monitors
+python datadog-api/scripts/datadog_api.py monitors
+
+# List alerting monitors only
+python datadog-api/scripts/datadog_api.py monitors --status alerting
+
+# Filter monitors by tag
+python datadog-api/scripts/datadog_api.py monitors --tag service:api
+
+# Query metrics
+python datadog-api/scripts/datadog_api.py query --metric system.cpu.user --from 2 --tags host:prod-web-01
+
+# List dashboards
+python datadog-api/scripts/datadog_api.py dashboards --filter production
+
+# Get events from last 24 hours
+python datadog-api/scripts/datadog_api.py events --from 24 --tags service:api
+
+# Get specific monitor details
+python datadog-api/scripts/datadog_api.py monitor-info --id 12345
+
+# Get dashboard definition
+python datadog-api/scripts/datadog_api.py dashboard-info --id abc-def-123
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `monitors` | List monitors with optional status/tag filtering |
+| `query` | Query time-series metrics |
+| `dashboards` | List dashboards with optional name filter |
+| `events` | List events with time range and tag filtering |
+| `monitor-info` | Get detailed monitor information |
+| `dashboard-info` | Get dashboard definition |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--api-key` | Datadog API key (or use DD_API_KEY env var) |
+| `--app-key` | Datadog Application key (or use DD_APP_KEY env var) |
+| `--site` | Datadog site (default: datadoghq.com) |
+| `--status` | Filter monitors: alerting, warn, ok, no_data |
+| `--tag` | Filter by tag |
+| `--metric` | Metric name to query |
+| `--from` | Hours ago to start query |
+| `--tags` | Tag filter for metrics/events |
+| `--filter` | Name filter for dashboards |
+| `--id` | Monitor or dashboard ID |
+
+**Datadog Sites:**
+
+| Site | Region |
+|------|--------|
+| `datadoghq.com` | US1 (default) |
+| `us3.datadoghq.com` | US3 |
+| `us5.datadoghq.com` | US5 |
+| `datadoghq.eu` | EU1 |
+| `ap1.datadoghq.com` | AP1 |
+| `ddog-gov.com` | US Government |
+
+**Credential Resolution** (priority order):
+1. CLI arguments (`--api-key`, `--app-key`, `--site`)
+2. Environment variables (`DD_API_KEY`, `DD_APP_KEY`, `DD_SITE`)
+3. `.credentials` file (auto-parsed from `datadog-api/references/.credentials`)
 
 **Exit codes:**
 - `0` = success
@@ -1138,6 +1233,8 @@ When contributing to this repository:
 | Run MySQL query | `~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
 | Get Vault secret | `~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database` |
 | Run Oracle query | `~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env DEV -q "SELECT..."` |
+| List Datadog monitors | `python datadog-api/scripts/datadog_api.py monitors` |
+| Query Datadog metrics | `python datadog-api/scripts/datadog_api.py query --metric system.cpu.user` |
 
 ### Configuration Files
 
@@ -1150,6 +1247,7 @@ When contributing to this repository:
 | mysql-query-runner | `references/.credentials` | Database credentials for DEV/QA/UAT/PROD |
 | vault-access | `references/.credentials` | Vault address and token |
 | oracle-query-runner | `references/.credentials` | Oracle database credentials for DEV/QA/UAT/PROD |
+| datadog-api | `references/.credentials` | Datadog API and Application keys |
 
 ### Important Files
 
@@ -1164,10 +1262,16 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-09
-**Version:** 1.7.0
+**Version:** 1.8.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-09 v1.7.0):**
+**Recent Changes (2026-01-09 v1.8.0):**
+- Added datadog-api skill for Datadog observability queries
+- Supports monitors, metrics, dashboards, and events
+- Multi-region support (US1, US3, US5, EU1, AP1, GOV)
+- Credential auto-loading from .credentials file
+
+**Previous Changes (2026-01-09 v1.7.0):**
 - Added oracle-query-runner skill for Oracle database queries
 - Supports DEV/QA/UAT/PROD environment switching
 - Safety guardrails: write confirmation, PROD double-confirm

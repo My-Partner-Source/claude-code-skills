@@ -17,6 +17,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [mysql-query-runner](#mysql-query-runner) | Execute MySQL queries against DEV/QA/UAT/PROD | `/mysql-query-runner` |
 | [vault-access](#vault-access) | Retrieve secrets from HashiCorp Vault | `/vault-access` |
 | [oracle-query-runner](#oracle-query-runner) | Execute Oracle queries against DEV/QA/UAT/PROD | `/oracle-query-runner` |
+| [datadog-api](#datadog-api) | Query Datadog metrics, monitors, and events | `/datadog-api` |
 
 ## Installation
 
@@ -38,6 +39,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r mysql-query-runner ~/.claude/skills/
    cp -r vault-access ~/.claude/skills/
    cp -r oracle-query-runner ~/.claude/skills/
+   cp -r datadog-api ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -650,6 +652,78 @@ See `oracle-query-runner/SKILL.md` for complete documentation.
 
 ---
 
+## Datadog API
+
+Query Datadog metrics, monitors, dashboards, and events for observability insights directly from Claude Code.
+
+### Core Philosophy
+
+Access your Datadog observability data without context switching. Query metrics, check alert status, and investigate incidents from your development environment.
+
+### Quick Start
+
+1. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/datadog-api && bash setup.sh
+   ```
+
+2. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/datadog-api/references
+   cp .credentials.example .credentials
+   # Edit with your Datadog API and Application keys
+   chmod 600 .credentials
+   ```
+
+3. **Query Data**:
+   ```
+   "Are there any alerts firing right now?"
+   "What's the CPU usage on prod-web-01 over the last hour?"
+   "Show me dashboards related to production"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `monitors` | List monitors with optional status/tag filtering |
+| `query` | Query time-series metrics |
+| `dashboards` | List dashboards with optional name filter |
+| `events` | List events with time range and tag filtering |
+| `monitor-info` | Get detailed monitor information |
+| `dashboard-info` | Get dashboard definition |
+
+### Script Usage
+
+```bash
+# List alerting monitors
+python datadog-api/scripts/datadog_api.py monitors --status alerting
+
+# Query CPU metrics
+python datadog-api/scripts/datadog_api.py query --metric system.cpu.user --from 2 --tags host:prod-web-01
+
+# List dashboards
+python datadog-api/scripts/datadog_api.py dashboards --filter production
+
+# Get recent events
+python datadog-api/scripts/datadog_api.py events --from 24 --tags service:api
+```
+
+### Datadog Sites
+
+| Site | Region |
+|------|--------|
+| `datadoghq.com` | US1 (default) |
+| `us3.datadoghq.com` | US3 |
+| `us5.datadoghq.com` | US5 |
+| `datadoghq.eu` | EU1 |
+| `ap1.datadoghq.com` | AP1 |
+| `ddog-gov.com` | US Government |
+
+See `datadog-api/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -667,6 +741,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | mysql-query-runner | `~/.claude/skills/mysql-query-runner/references/.credentials` |
 | vault-access | `~/.claude/skills/vault-access/references/.credentials` |
 | oracle-query-runner | `~/.claude/skills/oracle-query-runner/references/.credentials` |
+| datadog-api | `~/.claude/skills/datadog-api/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -790,15 +865,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── vault_access.py               # Vault secret retrieval
 │
-└── oracle-query-runner/
+├── oracle-query-runner/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (oracledb)
+│   ├── references/
+│   │   ├── .credentials.example          # Oracle credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── oracle_query.py               # Oracle query executor with safety checks
+│
+└── datadog-api/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (oracledb)
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
-    │   ├── .credentials.example          # Oracle credentials template
+    │   ├── .credentials.example          # API credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── oracle_query.py               # Oracle query executor with safety checks
+        └── datadog_api.py                # Datadog API wrapper
 ```
 
 ---
