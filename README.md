@@ -503,9 +503,9 @@ Secrets should be managed securely and accessed programmatically. This skill con
    /vpn-check
    ```
 
-2. **Install requests library**:
+2. **Run Setup Script** (creates venv and installs dependencies):
    ```bash
-   pip install requests
+   cd ~/.claude/skills/vault-access && bash setup.sh
    ```
 
 3. **Set Up Credentials**:
@@ -535,19 +535,19 @@ Secrets should be managed securely and accessed programmatically. This skill con
 
 ```bash
 # Get all keys from a secret
-python vault_access.py get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
 
 # Get a specific key
-python vault_access.py get secret/myapp/database --key password
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
 
 # List secrets
-python vault_access.py list secret/myapp/
+~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
 
 # Show actual values (default: masked)
-python vault_access.py get secret/myapp/database --show
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --show
 
 # Export as environment variables
-python vault_access.py get secret/myapp/database --format env
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
 ```
 
 ### Output Formats
@@ -701,6 +701,8 @@ claude-code-skills/
 │
 └── vault-access/
     ├── SKILL.md                          # Skill definition
+    ├── setup.sh                          # Virtual environment setup
+    ├── requirements.txt                  # Python dependencies
     ├── references/
     │   ├── .credentials.example          # Vault credentials template
     │   └── .gitignore                    # Protects credentials

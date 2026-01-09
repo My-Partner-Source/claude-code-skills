@@ -105,6 +105,8 @@ claude-code-skills/
 │
 └── vault-access/
     ├── SKILL.md                          # Skill definition
+    ├── setup.sh                          # Virtual environment setup script
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
     │   ├── .credentials.example          # Vault credentials template
     │   └── .gitignore                    # Protects .credentials
@@ -416,26 +418,31 @@ SELECT * FROM metadataconfdb.config WHERE id = 1;
 
 Retrieve secrets from HashiCorp Vault with KV v1/v2 engine support.
 
-**Requires external dependency:** `pip install requests`
+**One-time setup** (creates virtual environment and installs requests):
+```bash
+cd ~/.claude/skills/vault-access && bash setup.sh
+```
+
+This creates a `.venv` folder and configures the script to use it automatically.
 
 ```bash
 # Get all key-value pairs from a secret path
-python vault-access/scripts/vault_access.py get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
 
 # Get a specific key from a secret
-python vault-access/scripts/vault_access.py get secret/myapp/database --key password
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
 
 # List secrets in a path
-python vault-access/scripts/vault_access.py list secret/myapp/
+~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
 
 # Show values (unmask secrets)
-python vault-access/scripts/vault_access.py get secret/myapp/database --show
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --show
 
 # Export as environment variables format
-python vault-access/scripts/vault_access.py get secret/myapp/database --format env
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
 
 # Check Vault connectivity
-python vault-access/scripts/vault_access.py status
+~/.claude/skills/vault-access/scripts/vault_access.py status
 ```
 
 **What it does:**
@@ -443,6 +450,7 @@ python vault-access/scripts/vault_access.py status
 - Auto-detects KV v1 vs v2 engine format
 - Masks secret values by default for security
 - Supports multiple output formats (table, json, env, raw)
+- Auto-re-exec: script detects wrong Python and re-executes with venv
 
 **Authentication methods:**
 1. Environment variables: `VAULT_ADDR`, `VAULT_TOKEN`
@@ -1060,7 +1068,7 @@ When contributing to this repository:
 | List Bitbucket repos | `python bitbucket-repo-lookup/scripts/bitbucket_api.py list` |
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
 | Run MySQL query | `~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
-| Get Vault secret | `python vault-access/scripts/vault_access.py get secret/myapp/database` |
+| Get Vault secret | `~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database` |
 
 ### Configuration Files
 

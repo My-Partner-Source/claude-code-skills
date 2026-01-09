@@ -16,6 +16,23 @@ import sys
 from pathlib import Path
 from urllib.parse import urljoin
 
+# Venv auto-detection and re-exec
+# If script is called with system Python instead of venv Python, re-exec with venv
+_SKILL_DIR = Path(__file__).parent.parent
+_VENV_DIR = _SKILL_DIR / ".venv"
+_VENV_PYTHON = _VENV_DIR / "bin" / "python3"
+_SETUP_SCRIPT = _SKILL_DIR / "setup.sh"
+
+if not sys.prefix.startswith(str(_VENV_DIR)):
+    if _VENV_PYTHON.exists():
+        # Venv exists but script called with wrong Python - re-exec with venv Python
+        os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+    else:
+        # Venv doesn't exist - prompt to run setup
+        print("Error: Virtual environment not found.")
+        print(f"Run setup first: cd {_SKILL_DIR} && bash setup.sh")
+        sys.exit(1)
+
 try:
     import requests
 except ImportError:

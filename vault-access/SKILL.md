@@ -24,10 +24,13 @@ Retrieve secrets from HashiCorp Vault with environment-aware configuration.
 
 ### Dependencies
 
-Requires the `requests` library:
+**One-time setup** (creates virtual environment and installs requests):
+
 ```bash
-pip install requests
+cd ~/.claude/skills/vault-access && bash setup.sh
 ```
+
+This creates a `.venv` folder and configures the script to use it automatically.
 
 ---
 
@@ -46,7 +49,7 @@ If missing, invoke `/credential-setup vault-access`.
 
 ### Step 3: Retrieve Secret
 ```bash
-python vault-access/scripts/vault_access.py get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
 ```
 
 ### Step 4: Return Results
@@ -60,25 +63,25 @@ python vault-access/scripts/vault_access.py get secret/myapp/database
 
 ```bash
 # Get all key-value pairs from a secret path
-python vault-access/scripts/vault_access.py get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
 
 # Get a specific key from a secret
-python vault-access/scripts/vault_access.py get secret/myapp/database --key password
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
 
 # List secrets in a path
-python vault-access/scripts/vault_access.py list secret/myapp/
+~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
 
 # Show values (unmask secrets)
-python vault-access/scripts/vault_access.py get secret/myapp/database --show
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --show
 
 # Export as environment variables format
-python vault-access/scripts/vault_access.py get secret/myapp/database --format env
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
 
 # Specify KV version explicitly
-python vault-access/scripts/vault_access.py get secret/myapp/database --kv-version 2
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --kv-version 2
 
 # Check Vault connectivity
-python vault-access/scripts/vault_access.py status
+~/.claude/skills/vault-access/scripts/vault_access.py status
 ```
 
 ### Arguments
