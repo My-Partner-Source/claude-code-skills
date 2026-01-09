@@ -15,6 +15,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [credential-setup](#credential-setup) | Interactive credential configuration helper | `/credential-setup` |
 | [deployment-plan-checker](#deployment-plan-checker) | Verify team Bamboo entries in deployment plans | `/deployment-plan-checker` |
 | [mysql-query-runner](#mysql-query-runner) | Execute MySQL queries against DEV/QA/UAT/PROD | `/mysql-query-runner` |
+| [vault-access](#vault-access) | Retrieve secrets from HashiCorp Vault | `/vault-access` |
 
 ## Installation
 
@@ -34,6 +35,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r credential-setup ~/.claude/skills/
    cp -r deployment-plan-checker ~/.claude/skills/
    cp -r mysql-query-runner ~/.claude/skills/
+   cp -r vault-access ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -486,6 +488,88 @@ See `mysql-query-runner/SKILL.md` for complete documentation.
 
 ---
 
+## Vault Access
+
+Retrieve secrets from HashiCorp Vault with KV v1/v2 engine support and secure credential handling.
+
+### Core Philosophy
+
+Secrets should be managed securely and accessed programmatically. This skill connects to HashiCorp Vault to retrieve credentials, API keys, and other sensitive data without exposing them in logs or history.
+
+### Quick Start
+
+1. **Verify VPN Connection** (if internal Vault):
+   ```
+   /vpn-check
+   ```
+
+2. **Run Setup Script** (creates venv and installs dependencies):
+   ```bash
+   cd ~/.claude/skills/vault-access && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/vault-access/references
+   cp .credentials.example .credentials
+   # Edit with your Vault address and token
+   chmod 600 .credentials
+   ```
+
+4. **Retrieve Secrets**:
+   ```
+   "Get the database password from Vault"
+   "List secrets under secret/myapp/"
+   "Check Vault connection status"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `get <path>` | Retrieve secret(s) from a path |
+| `list <path>` | List secrets at a path |
+| `status` | Check Vault connectivity and auth status |
+
+### Script Usage
+
+```bash
+# Get all keys from a secret
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
+
+# Get a specific key
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
+
+# List secrets
+~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
+
+# Show actual values (default: masked)
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --show
+
+# Export as environment variables
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
+```
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `table` (default) | Clean key-value display (masked) |
+| `json` | Programmatic processing |
+| `env` | Shell export statements |
+| `raw` | Single value (requires --key) |
+
+### Security Features
+
+- **Masked by default** — Secret values shown as `ab****cd`
+- **Token authentication** — Uses Vault tokens (short-lived preferred)
+- **No logging** — Secrets never written to logs
+- **File permissions** — `.credentials` set to 600 (owner only)
+
+See `vault-access/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -501,6 +585,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | credential-setup | Creates `.credentials` in skill's `references/` directory |
 | deployment-plan-checker | `~/.claude/skills/deployment-plan-checker/references/` |
 | mysql-query-runner | `~/.claude/skills/mysql-query-runner/references/.credentials` |
+| vault-access | `~/.claude/skills/vault-access/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -606,13 +691,23 @@ claude-code-skills/
 │       ├── .credentials.example          # Atlassian cloudId template
 │       └── .gitignore                    # Protects credentials
 │
-└── mysql-query-runner/
+├── mysql-query-runner/
+│   ├── SKILL.md                          # Skill definition
+│   ├── references/
+│   │   ├── .credentials.example          # Database credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── mysql_query.py                # Query executor with safety checks
+│
+└── vault-access/
     ├── SKILL.md                          # Skill definition
+    ├── setup.sh                          # Virtual environment setup
+    ├── requirements.txt                  # Python dependencies
     ├── references/
-    │   ├── .credentials.example          # Database credentials template
+    │   ├── .credentials.example          # Vault credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── mysql_query.py                # Query executor with safety checks
+        └── vault_access.py               # Vault secret retrieval
 ```
 
 ---

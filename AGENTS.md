@@ -11,6 +11,7 @@ This file provides AI coding assistants with essential context about the codebas
 3. **bitbucket-repo-lookup** - Discover, search, and clone Bitbucket repositories without leaving your development environment
 4. **vpn-check** - Verify VPN connectivity before accessing internal resources (prerequisite for other skills)
 5. **mysql-query-runner** - Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails
+6. **vault-access** - Retrieve secrets from HashiCorp Vault with KV v1/v2 support
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -94,13 +95,23 @@ claude-code-skills/
 │   └── scripts/
 │       └── check_vpn.py                  # VPN connectivity checker (4KB)
 │
-└── mysql-query-runner/
+├── mysql-query-runner/
+│   ├── SKILL.md                          # Skill definition
+│   ├── references/
+│   │   ├── .credentials.example          # Environment credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── mysql_query.py                # Query executor with safety checks (13KB)
+│
+└── vault-access/
     ├── SKILL.md                          # Skill definition
+    ├── setup.sh                          # Virtual environment setup script
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
-    │   ├── .credentials.example          # Environment credentials template
+    │   ├── .credentials.example          # Vault credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── mysql_query.py                # Query executor with safety checks (13KB)
+        └── vault_access.py               # Vault secret retrieval (12KB)
 ```
 
 ---
@@ -114,6 +125,7 @@ claude-code-skills/
 | **bitbucket-repo-lookup** | List/search/clone Bitbucket repos | `bitbucket_api.py`<br>`config.md`<br>`api-guide.md` | `/bitbucket-repo-lookup` |
 | **vpn-check** | Verify VPN connectivity via DNS | `check_vpn.py`<br>`.vpn-config.example` | `/vpn-check` |
 | **mysql-query-runner** | Execute MySQL queries with env switching | `mysql_query.py`<br>`.credentials.example` | `/mysql-query-runner` |
+| **vault-access** | Retrieve secrets from HashiCorp Vault | `vault_access.py`<br>`.credentials.example` | `/vault-access` |
 
 ---
 
@@ -395,6 +407,54 @@ DATABASE is optional. Leave `MYSQL_{ENV}_DATABASE=""` to access multiple databas
 SELECT * FROM intfstagedb.users;
 SELECT * FROM metadataconfdb.config WHERE id = 1;
 ```
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
+### vault_access.py (vault-access)
+
+Retrieve secrets from HashiCorp Vault with KV v1/v2 engine support.
+
+**One-time setup** (creates virtual environment and installs requests):
+```bash
+cd ~/.claude/skills/vault-access && bash setup.sh
+```
+
+This creates a `.venv` folder and configures the script to use it automatically.
+
+```bash
+# Get all key-value pairs from a secret path
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
+
+# Get a specific key from a secret
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
+
+# List secrets in a path
+~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
+
+# Show values (unmask secrets)
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --show
+
+# Export as environment variables format
+~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
+
+# Check Vault connectivity
+~/.claude/skills/vault-access/scripts/vault_access.py status
+```
+
+**What it does:**
+- Connects to HashiCorp Vault using token authentication
+- Auto-detects KV v1 vs v2 engine format
+- Masks secret values by default for security
+- Supports multiple output formats (table, json, env, raw)
+- Auto-re-exec: script detects wrong Python and re-executes with venv
+
+**Authentication methods:**
+1. Environment variables: `VAULT_ADDR`, `VAULT_TOKEN`
+2. `.credentials` file (auto-loaded from multiple locations)
 
 **Exit codes:**
 - `0` = success
@@ -1008,6 +1068,7 @@ When contributing to this repository:
 | List Bitbucket repos | `python bitbucket-repo-lookup/scripts/bitbucket_api.py list` |
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
 | Run MySQL query | `~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
+| Get Vault secret | `~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database` |
 
 ### Configuration Files
 
@@ -1018,6 +1079,7 @@ When contributing to this repository:
 | vpn-check | `~/.claude/skills/vpn-check/.vpn-config` | Internal hostname for VPN detection |
 | bitbucket-repo-lookup | `references/config.md` | Workspace, clone settings (credentials in `.credentials`) |
 | mysql-query-runner | `references/.credentials` | Database credentials for DEV/QA/UAT/PROD |
+| vault-access | `references/.credentials` | Vault address and token |
 
 ### Important Files
 
@@ -1031,11 +1093,18 @@ When contributing to this repository:
 
 ---
 
-**Last Updated:** 2026-01-08
-**Version:** 1.5.0
+**Last Updated:** 2026-01-09
+**Version:** 1.6.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-08 v1.5.0):**
+**Recent Changes (2026-01-09 v1.6.0):**
+- Added vault-access skill for HashiCorp Vault secret retrieval
+- Supports KV v1 and v2 engines with auto-detection
+- Token-based authentication with secure credential loading
+- Multiple output formats (table, json, env, raw)
+- Secret value masking by default for security
+
+**Previous Changes (2026-01-08 v1.5.0):**
 - Added auto-re-exec logic: script detects wrong Python and re-executes with venv
 - Updated documentation to use direct execution syntax (no `python` prefix)
 - Fixed shebang being ignored when called with `python3 script.py`
