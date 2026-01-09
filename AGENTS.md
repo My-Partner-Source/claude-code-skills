@@ -12,6 +12,7 @@ This file provides AI coding assistants with essential context about the codebas
 4. **vpn-check** - Verify VPN connectivity before accessing internal resources (prerequisite for other skills)
 5. **mysql-query-runner** - Execute MySQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 6. **vault-access** - Retrieve secrets from HashiCorp Vault with KV v1/v2 support
+7. **oracle-query-runner** - Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -103,15 +104,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── mysql_query.py                # Query executor with safety checks (13KB)
 │
-└── vault-access/
+├── vault-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (requests)
+│   ├── references/
+│   │   ├── .credentials.example          # Vault credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── vault_access.py               # Vault secret retrieval (12KB)
+│
+└── oracle-query-runner/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (requests)
+    ├── requirements.txt                  # Python dependencies (oracledb)
     ├── references/
-    │   ├── .credentials.example          # Vault credentials template
+    │   ├── .credentials.example          # Oracle credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── vault_access.py               # Vault secret retrieval (12KB)
+        └── oracle_query.py               # Query executor with safety checks
 ```
 
 ---
@@ -126,6 +137,7 @@ claude-code-skills/
 | **vpn-check** | Verify VPN connectivity via DNS | `check_vpn.py`<br>`.vpn-config.example` | `/vpn-check` |
 | **mysql-query-runner** | Execute MySQL queries with env switching | `mysql_query.py`<br>`.credentials.example` | `/mysql-query-runner` |
 | **vault-access** | Retrieve secrets from HashiCorp Vault | `vault_access.py`<br>`.credentials.example` | `/vault-access` |
+| **oracle-query-runner** | Execute Oracle queries with env switching | `oracle_query.py`<br>`.credentials.example` | `/oracle-query-runner` |
 
 ---
 
@@ -455,6 +467,62 @@ This creates a `.venv` folder and configures the script to use it automatically.
 **Authentication methods:**
 1. Environment variables: `VAULT_ADDR`, `VAULT_TOKEN`
 2. `.credentials` file (auto-loaded from multiple locations)
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
+### oracle_query.py (oracle-query-runner)
+
+Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails.
+
+**One-time setup** (creates virtual environment and installs oracledb):
+```bash
+cd ~/.claude/skills/oracle-query-runner && bash setup.sh
+```
+
+```bash
+# Basic query with environment
+~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env DEV --query "SELECT * FROM users WHERE ROWNUM <= 10"
+
+# Show tables
+~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env QA -q "SELECT table_name FROM user_tables"
+
+# Export to CSV
+~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env UAT -q "SELECT * FROM logs WHERE ROWNUM <= 100" --format csv --output logs.csv
+
+# Dry run (preview without executing)
+~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env PROD -q "DELETE FROM temp" --dry-run
+
+# Show config (verify connection)
+~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env DEV --show-config
+```
+
+**Safety Features:**
+
+| Feature | Behavior |
+|---------|----------|
+| **Write Detection** | Detects INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE/MERGE/REPLACE |
+| **Confirmation** | Writes require explicit confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **ROWNUM Warning** | Warns if SELECT has no ROWNUM/FETCH clause |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--env`, `-e` | Target: DEV, QA, UAT, PROD (prompts if omitted) |
+| `--query`, `-q` | SQL query (interactive if omitted) |
+| `--format`, `-f` | Output: markdown (default), csv, json |
+| `--output`, `-o` | Write results to file |
+| `--yes`, `-y` | Skip SELECT ROWNUM warning |
+| `--dry-run` | Preview without executing |
+| `--show-config` | Display connection settings |
+
+**Connection Format:**
+Uses Easy Connect format: `host:port/service_name`
 
 **Exit codes:**
 - `0` = success
@@ -1069,6 +1137,7 @@ When contributing to this repository:
 | Clone repo | `python bitbucket-repo-lookup/scripts/bitbucket_api.py clone repo-name` |
 | Run MySQL query | `~/.claude/skills/mysql-query-runner/scripts/mysql_query.py --env DEV -q "SELECT..."` |
 | Get Vault secret | `~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database` |
+| Run Oracle query | `~/.claude/skills/oracle-query-runner/scripts/oracle_query.py --env DEV -q "SELECT..."` |
 
 ### Configuration Files
 
@@ -1080,6 +1149,7 @@ When contributing to this repository:
 | bitbucket-repo-lookup | `references/config.md` | Workspace, clone settings (credentials in `.credentials`) |
 | mysql-query-runner | `references/.credentials` | Database credentials for DEV/QA/UAT/PROD |
 | vault-access | `references/.credentials` | Vault address and token |
+| oracle-query-runner | `references/.credentials` | Oracle database credentials for DEV/QA/UAT/PROD |
 
 ### Important Files
 
@@ -1094,10 +1164,18 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-09
-**Version:** 1.6.0
+**Version:** 1.7.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-09 v1.6.0):**
+**Recent Changes (2026-01-09 v1.7.0):**
+- Added oracle-query-runner skill for Oracle database queries
+- Supports DEV/QA/UAT/PROD environment switching
+- Safety guardrails: write confirmation, PROD double-confirm
+- Uses oracledb driver (thin mode, no Oracle Client required)
+- Markdown/CSV/JSON output formats
+- VPN prerequisite via skill stacking
+
+**Previous Changes (2026-01-09 v1.6.0):**
 - Added vault-access skill for HashiCorp Vault secret retrieval
 - Supports KV v1 and v2 engines with auto-detection
 - Token-based authentication with secure credential loading

@@ -1,0 +1,5 @@
+# Oracle database driver
+# oracledb is the new name for cx_Oracle (Python 3.6+)
+# Works in "thin" mode without Oracle Client libraries
+# For "thick" mode features, install Oracle Instant Client
+oracledb>=1.0.0
