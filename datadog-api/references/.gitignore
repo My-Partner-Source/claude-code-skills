@@ -1,0 +1,2 @@
+# Protect credentials from accidental commit
+.credentials
