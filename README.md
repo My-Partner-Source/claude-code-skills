@@ -16,6 +16,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [deployment-plan-checker](#deployment-plan-checker) | Verify team Bamboo entries in deployment plans | `/deployment-plan-checker` |
 | [mysql-query-runner](#mysql-query-runner) | Execute MySQL queries against DEV/QA/UAT/PROD | `/mysql-query-runner` |
 | [vault-access](#vault-access) | Retrieve secrets from HashiCorp Vault | `/vault-access` |
+| [oracle-query-runner](#oracle-query-runner) | Execute Oracle queries against DEV/QA/UAT/PROD | `/oracle-query-runner` |
 
 ## Installation
 
@@ -36,6 +37,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r deployment-plan-checker ~/.claude/skills/
    cp -r mysql-query-runner ~/.claude/skills/
    cp -r vault-access ~/.claude/skills/
+   cp -r oracle-query-runner ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -570,6 +572,84 @@ See `vault-access/SKILL.md` for complete documentation.
 
 ---
 
+## Oracle Query Runner
+
+Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails and environment switching.
+
+### Core Philosophy
+
+Database operations should be safe by default. Writes require confirmation, PROD writes require extra caution, and environment must be explicit to prevent accidental cross-environment queries.
+
+### Quick Start
+
+1. **Verify VPN Connection** (required):
+   ```
+   /vpn-check
+   ```
+
+2. **Run Setup** (creates virtual environment and installs oracledb):
+   ```bash
+   cd ~/.claude/skills/oracle-query-runner && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/oracle-query-runner/references
+   cp .credentials.example .credentials
+   # Edit with your database connection details
+   chmod 600 .credentials
+   ```
+
+4. **Run Queries**:
+   ```
+   "Show me the users table in DEV"
+   "How many orders are in QA today?"
+   "Run SELECT * FROM v$version on UAT"
+   ```
+
+### Safety Features
+
+| Feature | Behavior |
+|---------|----------|
+| **Environment Required** | Must specify DEV/QA/UAT/PROD (prompts if ambiguous) |
+| **Write Confirmation** | INSERT/UPDATE/DELETE require explicit confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **ROWNUM Warning** | Warns if SELECT has no ROWNUM/FETCH clause |
+
+### Oracle Connection
+
+Uses Easy Connect format: `host:port/service_name`
+
+The driver uses "thin" mode by default (no Oracle Instant Client required). For advanced features requiring "thick" mode, install Oracle Instant Client separately.
+
+### Script Usage
+
+```bash
+# Basic query
+oracle_query.py --env DEV --query "SELECT * FROM users WHERE ROWNUM <= 10"
+
+# Export to CSV
+oracle_query.py --env QA -q "SELECT * FROM logs WHERE ROWNUM <= 100" --format csv --output logs.csv
+
+# Dry run (preview without executing)
+oracle_query.py --env PROD -q "DELETE FROM temp" --dry-run
+
+# Show config
+oracle_query.py --env DEV --show-config
+```
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `markdown` (default) | Clean tables for chat display |
+| `csv` | Export for spreadsheets |
+| `json` | Programmatic processing |
+
+See `oracle-query-runner/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -586,6 +666,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | deployment-plan-checker | `~/.claude/skills/deployment-plan-checker/references/` |
 | mysql-query-runner | `~/.claude/skills/mysql-query-runner/references/.credentials` |
 | vault-access | `~/.claude/skills/vault-access/references/.credentials` |
+| oracle-query-runner | `~/.claude/skills/oracle-query-runner/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -697,17 +778,27 @@ claude-code-skills/
 │   │   ├── .credentials.example          # Database credentials template
 │   │   └── .gitignore                    # Protects credentials
 │   └── scripts/
-│       └── mysql_query.py                # Query executor with safety checks
+│       └── mysql_query.py                # MySQL query executor with safety checks
 │
-└── vault-access/
+├── vault-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies
+│   ├── references/
+│   │   ├── .credentials.example          # Vault credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── vault_access.py               # Vault secret retrieval
+│
+└── oracle-query-runner/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies
+    ├── requirements.txt                  # Python dependencies (oracledb)
     ├── references/
-    │   ├── .credentials.example          # Vault credentials template
+    │   ├── .credentials.example          # Oracle credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── vault_access.py               # Vault secret retrieval
+        └── oracle_query.py               # Oracle query executor with safety checks
 ```
 
 ---
