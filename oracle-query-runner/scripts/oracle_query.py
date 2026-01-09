@@ -19,12 +19,23 @@ from pathlib import Path
 
 # Venv auto-detection and re-exec
 # If script is called with system Python instead of venv Python, re-exec with venv
-_SKILL_DIR = Path(__file__).parent.parent
+_SKILL_DIR = Path(__file__).resolve().parent.parent
 _VENV_DIR = _SKILL_DIR / ".venv"
 _VENV_PYTHON = _VENV_DIR / "bin" / "python3"
 _SETUP_SCRIPT = _SKILL_DIR / "setup.sh"
 
-if not sys.prefix.startswith(str(_VENV_DIR)):
+
+def _is_running_in_venv() -> bool:
+    """Check if we're running inside the skill's virtual environment."""
+    if not _VENV_DIR.exists():
+        return False
+    # Resolve paths to handle symlinks
+    venv_path = _VENV_DIR.resolve()
+    prefix_path = Path(sys.prefix).resolve()
+    return str(prefix_path).startswith(str(venv_path))
+
+
+if not _is_running_in_venv():
     if _VENV_PYTHON.exists():
         # Venv exists but script called with wrong Python - re-exec with venv Python
         os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
@@ -42,7 +53,7 @@ except ImportError:
     sys.exit(1)
 
 # Constants
-SKILL_DIR = Path(__file__).parent.parent
+SKILL_DIR = Path(__file__).resolve().parent.parent
 CREDENTIALS_FILE = SKILL_DIR / "references" / ".credentials"
 VALID_ENVS = ["DEV", "QA", "UAT", "PROD"]
 
