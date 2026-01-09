@@ -1,0 +1,2 @@
+# s3-access dependencies
+boto3>=1.28.0
