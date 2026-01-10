@@ -15,6 +15,7 @@ This file provides AI coding assistants with essential context about the codebas
 7. **oracle-query-runner** - Execute Oracle SQL queries against DEV/QA/UAT/PROD environments with safety guardrails
 8. **datadog-api** - Query Datadog metrics, monitors, dashboards, and events for observability insights
 9. **s3-access** - Access Amazon S3 buckets and objects with multi-profile and region support
+10. **sftp-access** - Access remote SFTP servers for file transfer and management operations
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -136,15 +137,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── datadog_api.py                # Datadog API wrapper (18KB)
 │
-└── s3-access/
+├── s3-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (boto3)
+│   ├── references/
+│   │   ├── .credentials.example          # AWS credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── s3_access.py                  # S3 access wrapper (15KB)
+│
+└── sftp-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (boto3)
+    ├── requirements.txt                  # Python dependencies (paramiko)
     ├── references/
-    │   ├── .credentials.example          # AWS credentials template
+    │   ├── .credentials.example          # SFTP credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── s3_access.py                  # S3 access wrapper (15KB)
+        └── sftp_access.py                # SFTP access wrapper (15KB)
 ```
 
 ---
@@ -162,6 +173,7 @@ claude-code-skills/
 | **oracle-query-runner** | Execute Oracle queries with env switching | `oracle_query.py`<br>`.credentials.example` | `/oracle-query-runner` |
 | **datadog-api** | Query metrics, monitors, dashboards, events | `datadog_api.py`<br>`.credentials.example` | `/datadog-api` |
 | **s3-access** | Access S3 buckets, upload/download objects | `s3_access.py`<br>`.credentials.example` | `/s3-access` |
+| **sftp-access** | Access SFTP servers, upload/download files | `sftp_access.py`<br>`.credentials.example` | `/sftp-access` |
 
 ---
 
@@ -708,6 +720,86 @@ cd ~/.claude/skills/s3-access && bash setup.sh
 2. Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_PROFILE`)
 3. `.credentials` file (auto-parsed from `s3-access/references/.credentials`)
 4. AWS CLI configuration (`~/.aws/credentials`, `~/.aws/config`)
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
+### sftp_access.py (sftp-access)
+
+Access remote SFTP servers for file transfer and management operations.
+
+**One-time setup** (creates virtual environment and installs paramiko):
+```bash
+cd ~/.claude/skills/sftp-access && bash setup.sh
+```
+
+```bash
+# List remote directory
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /path/to/directory
+
+# Get file contents (display or download)
+~/.claude/skills/sftp-access/scripts/sftp_access.py get /path/to/file.txt
+~/.claude/skills/sftp-access/scripts/sftp_access.py get /path/to/file.txt --output local.txt
+
+# Upload a file
+~/.claude/skills/sftp-access/scripts/sftp_access.py put local.txt /remote/path/file.txt
+
+# Get file metadata
+~/.claude/skills/sftp-access/scripts/sftp_access.py info /path/to/file.txt
+
+# Delete remote file
+~/.claude/skills/sftp-access/scripts/sftp_access.py rm /path/to/file.txt
+
+# Create remote directory
+~/.claude/skills/sftp-access/scripts/sftp_access.py mkdir /path/to/directory
+
+# Remove remote directory (must be empty)
+~/.claude/skills/sftp-access/scripts/sftp_access.py rmdir /path/to/directory
+
+# Use specific host/user
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /path --host sftp.example.com --user myuser
+
+# Use SSH key authentication
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /path --key ~/.ssh/id_ed25519
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `ls <path>` | List remote directory contents |
+| `get <path>` | Get file contents or download to file |
+| `put <local> <remote>` | Upload local file to SFTP server |
+| `info <path>` | Get file/directory metadata |
+| `rm <path>` | Delete a remote file |
+| `mkdir <path>` | Create remote directory |
+| `rmdir <path>` | Remove remote directory (must be empty) |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--host`, `-H` | SFTP server hostname |
+| `--port`, `-P` | SFTP server port (default: 22) |
+| `--user`, `-u` | Username for authentication |
+| `--password`, `-p` | Password (prefer .credentials file) |
+| `--key`, `-k` | Path to SSH private key file |
+| `--output`, `-o` | Write get output to local file |
+| `--yes`, `-y` | Skip delete confirmation |
+| `--timeout`, `-t` | Connection timeout in seconds (default: 30) |
+
+**Credential Resolution** (priority order):
+1. CLI arguments (`--host`, `--user`, `--password`, `--key`)
+2. Environment variables (`SFTP_HOST`, `SFTP_USERNAME`, `SFTP_PASSWORD`, `SFTP_KEY_FILE`)
+3. `.credentials` file (auto-parsed from `sftp-access/references/.credentials`)
+
+**Authentication Methods:**
+- **Password**: Set `SFTP_PASSWORD` in .credentials
+- **SSH Key**: Set `SFTP_KEY_FILE` path (supports Ed25519, RSA, ECDSA, DSS)
+- **Encrypted Key**: Set `SFTP_KEY_PASSPHRASE` for passphrase-protected keys
 
 **Exit codes:**
 - `0` = success
@@ -1329,6 +1421,9 @@ When contributing to this repository:
 | List S3 objects | `~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket/prefix/` |
 | Download from S3 | `~/.claude/skills/s3-access/scripts/s3_access.py get bucket/key --output file` |
 | Upload to S3 | `~/.claude/skills/s3-access/scripts/s3_access.py put local.txt bucket/remote.txt` |
+| List SFTP directory | `~/.claude/skills/sftp-access/scripts/sftp_access.py ls /remote/path` |
+| Download from SFTP | `~/.claude/skills/sftp-access/scripts/sftp_access.py get /remote/file --output local` |
+| Upload to SFTP | `~/.claude/skills/sftp-access/scripts/sftp_access.py put local.txt /remote/file.txt` |
 
 ### Configuration Files
 
@@ -1343,6 +1438,7 @@ When contributing to this repository:
 | oracle-query-runner | `references/.credentials` | Oracle database credentials for DEV/QA/UAT/PROD |
 | datadog-api | `references/.credentials` | Datadog API and Application keys |
 | s3-access | `references/.credentials` | AWS access keys, region, and endpoint |
+| sftp-access | `references/.credentials` | SFTP host, username, password/SSH key |
 
 ### Important Files
 
@@ -1357,10 +1453,17 @@ When contributing to this repository:
 ---
 
 **Last Updated:** 2026-01-09
-**Version:** 1.9.0
+**Version:** 1.10.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-09 v1.9.0):**
+**Recent Changes (2026-01-09 v1.10.0):**
+- Added sftp-access skill for SFTP server file operations
+- Supports ls, get, put, info, rm, mkdir, rmdir commands
+- Password and SSH key authentication (Ed25519, RSA, ECDSA, DSS)
+- Passphrase support for encrypted private keys
+- Credential auto-loading from .credentials file
+
+**Previous Changes (2026-01-09 v1.9.0):**
 - Added s3-access skill for Amazon S3 operations
 - Supports list, get, put, info, rm, cp commands
 - Multi-profile and region support
