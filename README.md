@@ -18,6 +18,8 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [vault-access](#vault-access) | Retrieve secrets from HashiCorp Vault | `/vault-access` |
 | [oracle-query-runner](#oracle-query-runner) | Execute Oracle queries against DEV/QA/UAT/PROD | `/oracle-query-runner` |
 | [datadog-api](#datadog-api) | Query Datadog metrics, monitors, and events | `/datadog-api` |
+| [s3-access](#s3-access) | Access Amazon S3 buckets and objects | `/s3-access` |
+| [sftp-access](#sftp-access) | Access remote SFTP servers for file operations | `/sftp-access` |
 
 ## Installation
 
@@ -40,6 +42,8 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r vault-access ~/.claude/skills/
    cp -r oracle-query-runner ~/.claude/skills/
    cp -r datadog-api ~/.claude/skills/
+   cp -r s3-access ~/.claude/skills/
+   cp -r sftp-access ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -724,6 +728,185 @@ See `datadog-api/SKILL.md` for complete documentation.
 
 ---
 
+## S3 Access
+
+Access Amazon S3 buckets and objects with multi-profile and region support directly from Claude Code.
+
+### Core Philosophy
+
+Interact with your S3 storage without leaving your development environment. List buckets, browse objects, and transfer files with simple commands.
+
+### Quick Start
+
+1. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/s3-access && bash setup.sh
+   ```
+
+2. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/s3-access/references
+   cp .credentials.example .credentials
+   # Edit with your AWS credentials
+   chmod 600 .credentials
+   ```
+
+3. **Access S3**:
+   ```
+   "List my S3 buckets"
+   "Show files in the logs bucket"
+   "Download config.json from my-bucket"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `buckets` | List all accessible S3 buckets |
+| `ls <bucket>[/prefix]` | List objects with optional prefix filter |
+| `get <bucket/key>` | Get object contents or download to file |
+| `put <local> <bucket/key>` | Upload local file to S3 |
+| `info <bucket/key>` | Get object metadata (size, type, modified) |
+| `rm <bucket/key>` | Delete an object (with confirmation) |
+| `cp <src> <dest>` | Copy object between locations |
+
+### Script Usage
+
+```bash
+# List buckets
+~/.claude/skills/s3-access/scripts/s3_access.py buckets
+
+# List objects
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket/logs/
+
+# Download file
+~/.claude/skills/s3-access/scripts/s3_access.py get my-bucket/config.json --output local.json
+
+# Upload file
+~/.claude/skills/s3-access/scripts/s3_access.py put report.pdf my-bucket/reports/report.pdf
+
+# Use specific profile/region
+~/.claude/skills/s3-access/scripts/s3_access.py buckets --profile production --region eu-west-1
+```
+
+### Multi-Profile Support
+
+Use AWS profiles from `~/.aws/credentials`:
+
+```bash
+~/.claude/skills/s3-access/scripts/s3_access.py buckets --profile production
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket --profile staging
+```
+
+### Custom Endpoints
+
+Connect to S3-compatible services (MinIO, LocalStack, VPC endpoints):
+
+```bash
+~/.claude/skills/s3-access/scripts/s3_access.py buckets --endpoint-url http://localhost:9000
+```
+
+See `s3-access/SKILL.md` for complete documentation.
+
+---
+
+## SFTP Access
+
+Access remote SFTP servers for file transfer and management operations with password or SSH key authentication.
+
+### Core Philosophy
+
+Transfer files to and from SFTP servers without leaving your development environment. Supports both password and SSH key authentication for secure connections.
+
+### Quick Start
+
+1. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/sftp-access && bash setup.sh
+   ```
+
+2. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/sftp-access/references
+   cp .credentials.example .credentials
+   # Edit with your SFTP host and credentials
+   chmod 600 .credentials
+   ```
+
+3. **Access SFTP**:
+   ```
+   "List files on the SFTP server"
+   "Download the config file from /etc/app/"
+   "Upload report.pdf to /uploads/"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `ls <path>` | List remote directory contents |
+| `get <path>` | Get file contents or download to file |
+| `put <local> <remote>` | Upload local file to SFTP server |
+| `info <path>` | Get file/directory metadata |
+| `rm <path>` | Delete a remote file |
+| `mkdir <path>` | Create remote directory |
+| `rmdir <path>` | Remove remote directory (must be empty) |
+
+### Script Usage
+
+```bash
+# List directory
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /var/log
+
+# Download file
+~/.claude/skills/sftp-access/scripts/sftp_access.py get /etc/app/config.yaml --output config.yaml
+
+# Upload file
+~/.claude/skills/sftp-access/scripts/sftp_access.py put report.pdf /uploads/report.pdf
+
+# Get file info
+~/.claude/skills/sftp-access/scripts/sftp_access.py info /var/log/app.log
+
+# Use specific host/user
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /home --host sftp.example.com --user myuser
+```
+
+### Authentication Methods
+
+**Password Authentication:**
+```bash
+# Set in .credentials file
+SFTP_PASSWORD="your-password"
+```
+
+**SSH Key Authentication:**
+```bash
+# Set key path in .credentials
+SFTP_KEY_FILE="/home/user/.ssh/id_ed25519"
+
+# Or use CLI argument
+~/.claude/skills/sftp-access/scripts/sftp_access.py ls /path --key ~/.ssh/id_rsa
+```
+
+**Encrypted Keys:**
+```bash
+# Set passphrase for encrypted keys
+SFTP_KEY_PASSPHRASE="your-key-passphrase"
+```
+
+Supports Ed25519, RSA, ECDSA, and DSS key types.
+
+### Security Notes
+
+- Use SSH keys instead of passwords when possible
+- Set `.credentials` file permissions to 600
+- Rotate credentials regularly
+- Never commit credentials to version control
+
+See `sftp-access/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -742,6 +925,8 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | vault-access | `~/.claude/skills/vault-access/references/.credentials` |
 | oracle-query-runner | `~/.claude/skills/oracle-query-runner/references/.credentials` |
 | datadog-api | `~/.claude/skills/datadog-api/references/.credentials` |
+| s3-access | `~/.claude/skills/s3-access/references/.credentials` |
+| sftp-access | `~/.claude/skills/sftp-access/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -875,15 +1060,35 @@ claude-code-skills/
 │   └── scripts/
 │       └── oracle_query.py               # Oracle query executor with safety checks
 │
-└── datadog-api/
+├── datadog-api/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (requests)
+│   ├── references/
+│   │   ├── .credentials.example          # API credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── datadog_api.py                # Datadog API wrapper
+│
+├── s3-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (boto3)
+│   ├── references/
+│   │   ├── .credentials.example          # AWS credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── s3_access.py                  # S3 access wrapper
+│
+└── sftp-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (requests)
+    ├── requirements.txt                  # Python dependencies (paramiko)
     ├── references/
-    │   ├── .credentials.example          # API credentials template
+    │   ├── .credentials.example          # SFTP credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── datadog_api.py                # Datadog API wrapper
+        └── sftp_access.py                # SFTP access wrapper
 ```
 
 ---
