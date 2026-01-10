@@ -18,6 +18,8 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [vault-access](#vault-access) | Retrieve secrets from HashiCorp Vault | `/vault-access` |
 | [oracle-query-runner](#oracle-query-runner) | Execute Oracle queries against DEV/QA/UAT/PROD | `/oracle-query-runner` |
 | [datadog-api](#datadog-api) | Query Datadog metrics, monitors, and events | `/datadog-api` |
+| [s3-access](#s3-access) | Access Amazon S3 buckets and objects | `/s3-access` |
+| [redis-access](#redis-access) | Access Redis databases with multi-env support | `/redis-access` |
 
 ## Installation
 
@@ -40,6 +42,8 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r vault-access ~/.claude/skills/
    cp -r oracle-query-runner ~/.claude/skills/
    cp -r datadog-api ~/.claude/skills/
+   cp -r s3-access ~/.claude/skills/
+   cp -r redis-access ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -724,6 +728,162 @@ See `datadog-api/SKILL.md` for complete documentation.
 
 ---
 
+## S3 Access
+
+Access Amazon S3 buckets and objects with multi-profile and region support directly from Claude Code.
+
+### Core Philosophy
+
+Interact with S3 storage without leaving your development environment. List buckets, download files, upload content, and manage objects with simple commands.
+
+### Quick Start
+
+1. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/s3-access && bash setup.sh
+   ```
+
+2. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/s3-access/references
+   cp .credentials.example .credentials
+   # Edit with your AWS credentials
+   chmod 600 .credentials
+   ```
+
+3. **Access S3**:
+   ```
+   "List my S3 buckets"
+   "Show files in my-bucket/logs/"
+   "Download config.json from my-bucket"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `buckets` | List all accessible S3 buckets |
+| `ls <bucket>[/prefix]` | List objects with optional prefix |
+| `get <bucket/key>` | Download object or display contents |
+| `put <local> <bucket/key>` | Upload file to S3 |
+| `info <bucket/key>` | Get object metadata |
+| `rm <bucket/key>` | Delete object (with confirmation) |
+| `cp <src> <dest>` | Copy object between locations |
+
+### Script Usage
+
+```bash
+# List buckets
+~/.claude/skills/s3-access/scripts/s3_access.py buckets
+
+# List objects
+~/.claude/skills/s3-access/scripts/s3_access.py ls my-bucket/logs/
+
+# Download file
+~/.claude/skills/s3-access/scripts/s3_access.py get my-bucket/config.json --output config.json
+
+# Upload file
+~/.claude/skills/s3-access/scripts/s3_access.py put local.txt my-bucket/remote.txt
+
+# Use specific profile
+~/.claude/skills/s3-access/scripts/s3_access.py buckets --profile production
+```
+
+### Credential Resolution
+
+1. CLI arguments (`--profile`, `--region`)
+2. Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+3. `.credentials` file
+4. AWS CLI configuration (`~/.aws/credentials`)
+
+See `s3-access/SKILL.md` for complete documentation.
+
+---
+
+## Redis Access
+
+Access Redis databases across DEV/QA/UAT/PROD environments with comprehensive data type support and safety guardrails.
+
+### Core Philosophy
+
+Database operations should be safe by default. Writes require confirmation, PROD writes require extra caution, and environment must be explicit to prevent accidental operations.
+
+### Quick Start
+
+1. **Verify VPN Connection** (if internal Redis):
+   ```
+   /vpn-check
+   ```
+
+2. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/redis-access && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/redis-access/references
+   cp .credentials.example .credentials
+   # Edit with your Redis connection details for each environment
+   chmod 600 .credentials
+   ```
+
+4. **Access Redis**:
+   ```
+   "Get the session key from DEV Redis"
+   "List all cache keys matching 'user:*' in QA"
+   "Check Redis memory usage in PROD"
+   ```
+
+### Supported Data Types
+
+| Type | Commands |
+|------|----------|
+| **Strings** | `get`, `set`, `del` |
+| **Hashes** | `hget`, `hset`, `hgetall`, `hdel`, `hkeys`, `hlen` |
+| **Lists** | `lrange`, `lpush`, `rpush`, `llen`, `lpop`, `rpop` |
+| **Sets** | `smembers`, `sadd`, `srem`, `sismember`, `scard` |
+| **Sorted Sets** | `zrange`, `zadd`, `zscore`, `zrem`, `zcard` |
+| **Keys** | `keys`, `type`, `ttl`, `exists`, `expire` |
+| **Server** | `info`, `dbsize`, `ping` |
+
+### Script Usage
+
+```bash
+# String operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV get mykey
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV set mykey "value" --ttl 3600
+
+# Hash operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env QA hgetall session:user:123
+
+# Key operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env UAT keys "cache:*"
+
+# Server info
+~/.claude/skills/redis-access/scripts/redis_access.py --env PROD info --section memory
+```
+
+### Safety Features
+
+| Feature | Behavior |
+|---------|----------|
+| **Environment Required** | Must specify DEV/QA/UAT/PROD |
+| **Write Confirmation** | SET, DEL, HSET, etc. require confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **Dry Run** | Preview operations with `--dry-run` |
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `text` (default) | Clean display for chat |
+| `json` | Programmatic processing |
+
+See `redis-access/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -742,6 +902,8 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | vault-access | `~/.claude/skills/vault-access/references/.credentials` |
 | oracle-query-runner | `~/.claude/skills/oracle-query-runner/references/.credentials` |
 | datadog-api | `~/.claude/skills/datadog-api/references/.credentials` |
+| s3-access | `~/.claude/skills/s3-access/references/.credentials` |
+| redis-access | `~/.claude/skills/redis-access/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -875,15 +1037,35 @@ claude-code-skills/
 │   └── scripts/
 │       └── oracle_query.py               # Oracle query executor with safety checks
 │
-└── datadog-api/
+├── datadog-api/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (requests)
+│   ├── references/
+│   │   ├── .credentials.example          # API credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── datadog_api.py                # Datadog API wrapper
+│
+├── s3-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (boto3)
+│   ├── references/
+│   │   ├── .credentials.example          # AWS credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── s3_access.py                  # S3 access wrapper
+│
+└── redis-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (requests)
+    ├── requirements.txt                  # Python dependencies (redis)
     ├── references/
-    │   ├── .credentials.example          # API credentials template
+    │   ├── .credentials.example          # Redis credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── datadog_api.py                # Datadog API wrapper
+        └── redis_access.py               # Redis access wrapper
 ```
 
 ---
