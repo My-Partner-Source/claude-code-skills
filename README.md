@@ -20,6 +20,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [datadog-api](#datadog-api) | Query Datadog metrics, monitors, and events | `/datadog-api` |
 | [s3-access](#s3-access) | Access Amazon S3 buckets and objects | `/s3-access` |
 | [sftp-access](#sftp-access) | Access remote SFTP servers for file operations | `/sftp-access` |
+| [redis-access](#redis-access) | Access Redis databases with multi-env support | `/redis-access` |
 
 ## Installation
 
@@ -44,6 +45,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r datadog-api ~/.claude/skills/
    cp -r s3-access ~/.claude/skills/
    cp -r sftp-access ~/.claude/skills/
+   cp -r redis-access ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -907,6 +909,90 @@ See `sftp-access/SKILL.md` for complete documentation.
 
 ---
 
+## Redis Access
+
+Access Redis databases across DEV/QA/UAT/PROD environments with comprehensive data type support and safety guardrails.
+
+### Core Philosophy
+
+Database operations should be safe by default. Writes require confirmation, PROD writes require extra caution, and environment must be explicit to prevent accidental operations.
+
+### Quick Start
+
+1. **Verify VPN Connection** (if internal Redis):
+   ```
+   /vpn-check
+   ```
+
+2. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/redis-access && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/redis-access/references
+   cp .credentials.example .credentials
+   # Edit with your Redis connection details for each environment
+   chmod 600 .credentials
+   ```
+
+4. **Access Redis**:
+   ```
+   "Get the session key from DEV Redis"
+   "List all cache keys matching 'user:*' in QA"
+   "Check Redis memory usage in PROD"
+   ```
+
+### Supported Data Types
+
+| Type | Commands |
+|------|----------|
+| **Strings** | `get`, `set`, `del` |
+| **Hashes** | `hget`, `hset`, `hgetall`, `hdel`, `hkeys`, `hlen` |
+| **Lists** | `lrange`, `lpush`, `rpush`, `llen`, `lpop`, `rpop` |
+| **Sets** | `smembers`, `sadd`, `srem`, `sismember`, `scard` |
+| **Sorted Sets** | `zrange`, `zadd`, `zscore`, `zrem`, `zcard` |
+| **Keys** | `keys`, `type`, `ttl`, `exists`, `expire` |
+| **Server** | `info`, `dbsize`, `ping` |
+
+### Script Usage
+
+```bash
+# String operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV get mykey
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV set mykey "value" --ttl 3600
+
+# Hash operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env QA hgetall session:user:123
+
+# Key operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env UAT keys "cache:*"
+
+# Server info
+~/.claude/skills/redis-access/scripts/redis_access.py --env PROD info --section memory
+```
+
+### Safety Features
+
+| Feature | Behavior |
+|---------|----------|
+| **Environment Required** | Must specify DEV/QA/UAT/PROD |
+| **Write Confirmation** | SET, DEL, HSET, etc. require confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+| **Dry Run** | Preview operations with `--dry-run` |
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `text` (default) | Clean display for chat |
+| `json` | Programmatic processing |
+
+See `redis-access/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -927,6 +1013,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | datadog-api | `~/.claude/skills/datadog-api/references/.credentials` |
 | s3-access | `~/.claude/skills/s3-access/references/.credentials` |
 | sftp-access | `~/.claude/skills/sftp-access/references/.credentials` |
+| redis-access | `~/.claude/skills/redis-access/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -1080,15 +1167,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── s3_access.py                  # S3 access wrapper
 │
-└── sftp-access/
+├── sftp-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (paramiko)
+│   ├── references/
+│   │   ├── .credentials.example          # SFTP credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── sftp_access.py                # SFTP access wrapper
+│
+└── redis-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (paramiko)
+    ├── requirements.txt                  # Python dependencies (redis)
     ├── references/
-    │   ├── .credentials.example          # SFTP credentials template
+    │   ├── .credentials.example          # Redis credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── sftp_access.py                # SFTP access wrapper
+        └── redis_access.py               # Redis access wrapper
 ```
 
 ---

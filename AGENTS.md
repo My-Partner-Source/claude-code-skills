@@ -16,6 +16,7 @@ This file provides AI coding assistants with essential context about the codebas
 8. **datadog-api** - Query Datadog metrics, monitors, dashboards, and events for observability insights
 9. **s3-access** - Access Amazon S3 buckets and objects with multi-profile and region support
 10. **sftp-access** - Access remote SFTP servers for file transfer and management operations
+11. **redis-access** - Access Redis databases with multi-environment support and comprehensive data type operations
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -147,15 +148,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── s3_access.py                  # S3 access wrapper (15KB)
 │
-└── sftp-access/
+├── sftp-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (paramiko)
+│   ├── references/
+│   │   ├── .credentials.example          # SFTP credentials template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── sftp_access.py                # SFTP access wrapper (15KB)
+│
+└── redis-access/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (paramiko)
+    ├── requirements.txt                  # Python dependencies (redis)
     ├── references/
-    │   ├── .credentials.example          # SFTP credentials template
+    │   ├── .credentials.example          # Redis credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── sftp_access.py                # SFTP access wrapper (15KB)
+        └── redis_access.py               # Redis access wrapper (15KB)
 ```
 
 ---
@@ -174,6 +185,7 @@ claude-code-skills/
 | **datadog-api** | Query metrics, monitors, dashboards, events | `datadog_api.py`<br>`.credentials.example` | `/datadog-api` |
 | **s3-access** | Access S3 buckets, upload/download objects | `s3_access.py`<br>`.credentials.example` | `/s3-access` |
 | **sftp-access** | Access SFTP servers, upload/download files | `sftp_access.py`<br>`.credentials.example` | `/sftp-access` |
+| **redis-access** | Access Redis with multi-env support | `redis_access.py`<br>`.credentials.example` | `/redis-access` |
 
 ---
 
@@ -807,6 +819,119 @@ cd ~/.claude/skills/sftp-access && bash setup.sh
 
 ---
 
+### redis_access.py (redis-access)
+
+Access Redis databases across DEV/QA/UAT/PROD environments with comprehensive data type support.
+
+**One-time setup** (creates virtual environment and installs redis):
+```bash
+cd ~/.claude/skills/redis-access && bash setup.sh
+```
+
+```bash
+# String operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV get mykey
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV set mykey "value" --ttl 3600
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV del mykey
+
+# Key operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV keys "user:*"
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV type mykey
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV ttl mykey
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV exists mykey
+
+# Hash operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env QA hget myhash field
+~/.claude/skills/redis-access/scripts/redis_access.py --env QA hset myhash field "value"
+~/.claude/skills/redis-access/scripts/redis_access.py --env QA hgetall myhash
+
+# List operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env UAT lrange mylist 0 -1
+~/.claude/skills/redis-access/scripts/redis_access.py --env UAT lpush mylist "value"
+~/.claude/skills/redis-access/scripts/redis_access.py --env UAT llen mylist
+
+# Set operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV smembers myset
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV sadd myset "member"
+
+# Sorted set operations
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV zrange myzset 0 -1
+~/.claude/skills/redis-access/scripts/redis_access.py --env DEV zadd myzset 1.0 "member"
+
+# Server info
+~/.claude/skills/redis-access/scripts/redis_access.py --env PROD info
+~/.claude/skills/redis-access/scripts/redis_access.py --env PROD info --section memory
+~/.claude/skills/redis-access/scripts/redis_access.py --env PROD dbsize
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `get <key>` | Get string value |
+| `set <key> <value>` | Set string value (--ttl for expiration) |
+| `del <key>` | Delete key |
+| `keys <pattern>` | List keys matching pattern |
+| `type <key>` | Get key type |
+| `ttl <key>` | Get time to live |
+| `exists <key>` | Check if key exists |
+| `expire <key> <sec>` | Set key expiration |
+| `hget <key> <field>` | Get hash field |
+| `hset <key> <field> <val>` | Set hash field |
+| `hgetall <key>` | Get all hash fields |
+| `hdel <key> <field>` | Delete hash field |
+| `hkeys <key>` | Get hash field names |
+| `hlen <key>` | Get hash length |
+| `lrange <key> <start> <stop>` | Get list range |
+| `lpush <key> <value>` | Push to list head |
+| `rpush <key> <value>` | Push to list tail |
+| `llen <key>` | Get list length |
+| `lpop <key>` | Pop from list head |
+| `rpop <key>` | Pop from list tail |
+| `smembers <key>` | Get set members |
+| `sadd <key> <member>` | Add to set |
+| `srem <key> <member>` | Remove from set |
+| `sismember <key> <member>` | Check set membership |
+| `scard <key>` | Get set cardinality |
+| `zrange <key> <start> <stop>` | Get sorted set range |
+| `zadd <key> <score> <member>` | Add to sorted set |
+| `zscore <key> <member>` | Get member score |
+| `zrem <key> <member>` | Remove from sorted set |
+| `zcard <key>` | Get sorted set cardinality |
+| `info` | Get server info (--section for specific) |
+| `dbsize` | Get number of keys |
+| `ping` | Test connection |
+| `flushdb` | Delete all keys in database |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--env`, `-e` | Target: DEV, QA, UAT, PROD (prompts if omitted) |
+| `--format`, `-f` | Output: text (default), json |
+| `--output`, `-o` | Write results to file |
+| `--yes`, `-y` | Skip write confirmation |
+| `--dry-run` | Preview without executing |
+| `--show-config` | Display connection settings |
+
+**Safety Features:**
+
+| Feature | Behavior |
+|---------|----------|
+| **Write Detection** | Detects SET, DEL, HSET, LPUSH, SADD, ZADD, FLUSHDB |
+| **Confirmation** | Writes require explicit confirmation |
+| **PROD Protection** | PROD writes require typing "PROD" to confirm |
+
+**Credential Resolution** (priority order):
+1. Environment variables (`REDIS_{ENV}_HOST`, `REDIS_{ENV}_PORT`, etc.)
+2. `.credentials` file (auto-parsed from `redis-access/references/.credentials`)
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
 ## bitbucket-repo-lookup Implementation Details
 
 **Critical for future development and debugging.**
@@ -1424,6 +1549,10 @@ When contributing to this repository:
 | List SFTP directory | `~/.claude/skills/sftp-access/scripts/sftp_access.py ls /remote/path` |
 | Download from SFTP | `~/.claude/skills/sftp-access/scripts/sftp_access.py get /remote/file --output local` |
 | Upload to SFTP | `~/.claude/skills/sftp-access/scripts/sftp_access.py put local.txt /remote/file.txt` |
+| Get Redis key | `~/.claude/skills/redis-access/scripts/redis_access.py --env DEV get mykey` |
+| Set Redis key | `~/.claude/skills/redis-access/scripts/redis_access.py --env DEV set mykey "value"` |
+| List Redis keys | `~/.claude/skills/redis-access/scripts/redis_access.py --env DEV keys "user:*"` |
+| Get Redis hash | `~/.claude/skills/redis-access/scripts/redis_access.py --env DEV hgetall myhash` |
 
 ### Configuration Files
 
@@ -1439,6 +1568,7 @@ When contributing to this repository:
 | datadog-api | `references/.credentials` | Datadog API and Application keys |
 | s3-access | `references/.credentials` | AWS access keys, region, and endpoint |
 | sftp-access | `references/.credentials` | SFTP host, username, password/SSH key |
+| redis-access | `references/.credentials` | Redis host, port, password for DEV/QA/UAT/PROD |
 
 ### Important Files
 
@@ -1452,11 +1582,18 @@ When contributing to this repository:
 
 ---
 
-**Last Updated:** 2026-01-09
-**Version:** 1.10.0
+**Last Updated:** 2026-01-10
+**Version:** 1.11.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-09 v1.10.0):**
+**Recent Changes (2026-01-10 v1.11.0):**
+- Added redis-access skill for Redis database operations
+- Multi-environment support (DEV/QA/UAT/PROD)
+- Comprehensive data type support (strings, hashes, lists, sets, sorted sets)
+- Safety guardrails: write confirmation, PROD double-confirm
+- Credential auto-loading from .credentials file
+
+**Previous Changes (2026-01-09 v1.10.0):**
 - Added sftp-access skill for SFTP server file operations
 - Supports ls, get, put, info, rm, mkdir, rmdir commands
 - Password and SSH key authentication (Ed25519, RSA, ECDSA, DSS)
