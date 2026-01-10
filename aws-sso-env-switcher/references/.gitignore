@@ -1,0 +1,6 @@
+# Protect credentials from accidental commits
+.credentials
+
+# Never commit actual credential files
+*.credentials
+!.credentials.example

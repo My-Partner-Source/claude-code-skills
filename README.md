@@ -21,6 +21,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [s3-access](#s3-access) | Access Amazon S3 buckets and objects | `/s3-access` |
 | [sftp-access](#sftp-access) | Access remote SFTP servers for file operations | `/sftp-access` |
 | [redis-access](#redis-access) | Access Redis databases with multi-env support | `/redis-access` |
+| [aws-sso-env-switcher](#aws-sso-env-switcher) | Switch AWS environments with SSO and kubectl | `/aws-sso-env-switcher` |
 
 ## Installation
 
@@ -46,6 +47,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r s3-access ~/.claude/skills/
    cp -r sftp-access ~/.claude/skills/
    cp -r redis-access ~/.claude/skills/
+   cp -r aws-sso-env-switcher ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -993,6 +995,128 @@ See `redis-access/SKILL.md` for complete documentation.
 
 ---
 
+## AWS SSO Environment Switcher
+
+Switch between AWS environments (DEV/QA/UAT/PROD) using AWS SSO and manage kubectl contexts for EKS clusters.
+
+### Core Philosophy
+
+Eliminate the friction of managing multiple AWS accounts and Kubernetes clusters. Switch environments with a single command, and your SSO session and kubectl context are automatically configured.
+
+### Quick Start
+
+1. **Verify Prerequisites**:
+   ```bash
+   # AWS CLI v2 required for SSO
+   aws --version  # Should be 2.x
+
+   # kubectl required for EKS
+   kubectl version --client
+   ```
+
+2. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/aws-sso-env-switcher && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/aws-sso-env-switcher/references
+   cp .credentials.example .credentials
+   # Edit with your AWS SSO and EKS details
+   chmod 600 .credentials
+   ```
+
+4. **Switch Environments**:
+   ```
+   "Switch to the DEV environment"
+   "Connect to QA and show pods"
+   "Get deployments from PROD"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `status` | Check SSO authentication status for all environments |
+| `switch --env <ENV>` | Switch to environment (DEV/QA/UAT/PROD) |
+| `kubectl --env <ENV> -- <args>` | Run kubectl command in environment |
+| `list` | List configured environments |
+| `current` | Show current environment and context |
+| `login --env <ENV>` | Force SSO login for environment |
+| `update-kubeconfig --env <ENV>` | Update kubectl config for EKS cluster |
+
+### Script Usage
+
+```bash
+# Check SSO status
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py status
+
+# Switch environment
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py switch --env DEV
+
+# Run kubectl in specific environment
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py kubectl --env PROD -- get pods
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py kubectl --env QA -- get deployments -n my-namespace
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py kubectl -- logs deployment/my-app
+
+# List environments
+~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py list
+```
+
+### Safety Features
+
+| Feature | Behavior |
+|---------|----------|
+| **Environment Display** | Always shows current environment before operations |
+| **PROD Protection** | Destructive kubectl operations in PROD require typing "PROD" to confirm |
+| **Auto SSO Refresh** | Automatically re-authenticates when session expires |
+| **Context Isolation** | Each environment uses distinct kubectl context |
+
+### Credential Structure
+
+```bash
+# AWS SSO Configuration
+AWS_SSO_START_URL="https://mycompany.awsapps.com/start"
+AWS_SSO_REGION="us-east-1"
+
+# Per-Environment Configuration
+AWS_DEV_SSO_ACCOUNT_ID="123456789012"
+AWS_DEV_SSO_ROLE_NAME="DeveloperAccess"
+AWS_DEV_EKS_CLUSTER="my-app-dev-eks"
+AWS_DEV_EKS_REGION="us-east-1"
+AWS_DEV_NAMESPACE="default"
+
+# Repeat for QA, UAT, PROD...
+```
+
+### AWS SSO Setup
+
+The skill automatically creates AWS CLI profiles for each environment:
+
+```bash
+# In ~/.aws/config (auto-generated)
+[profile dev-sso]
+sso_start_url = https://mycompany.awsapps.com/start
+sso_region = us-east-1
+sso_account_id = 123456789012
+sso_role_name = DeveloperAccess
+region = us-east-1
+```
+
+### Destructive Operations
+
+These kubectl operations require explicit confirmation in PROD:
+- `delete` — Deletes resources
+- `scale` — Scales deployments (especially to zero)
+- `rollout restart` — Restarts deployments
+- `apply` — Applies configuration changes
+- `patch` — Patches resources
+
+See `aws-sso-env-switcher/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -1014,6 +1138,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | s3-access | `~/.claude/skills/s3-access/references/.credentials` |
 | sftp-access | `~/.claude/skills/sftp-access/references/.credentials` |
 | redis-access | `~/.claude/skills/redis-access/references/.credentials` |
+| aws-sso-env-switcher | `~/.claude/skills/aws-sso-env-switcher/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -1177,15 +1302,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── sftp_access.py                # SFTP access wrapper
 │
-└── redis-access/
+├── redis-access/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (redis)
+│   ├── references/
+│   │   ├── .credentials.example          # Redis credentials template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── redis_access.py               # Redis access wrapper
+│
+└── aws-sso-env-switcher/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (redis)
+    ├── requirements.txt                  # Python dependencies (boto3)
     ├── references/
-    │   ├── .credentials.example          # Redis credentials template
+    │   ├── .credentials.example          # AWS SSO and EKS config template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── redis_access.py               # Redis access wrapper
+        └── aws_sso_env.py                # AWS SSO environment switcher
 ```
 
 ---

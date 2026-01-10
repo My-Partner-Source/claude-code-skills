@@ -1,0 +1,7 @@
+# AWS SSO Environment Switcher dependencies
+#
+# Note: This skill primarily uses AWS CLI and kubectl which are system tools.
+# The Python dependencies are minimal since AWS CLI handles SSO.
+#
+# boto3 is optional but useful for programmatic AWS operations
+boto3>=1.26.0
