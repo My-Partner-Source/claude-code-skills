@@ -1,5 +1,6 @@
 ---
 name: social-media-poster
+version: 1.0.0
 description: "Generate dev log social media posts from coding sessions. Use this skill when (1) creating X/Twitter posts or threads about development work, (2) writing LinkedIn posts about technical learnings, (3) converting session logs or book content into social content, or (4) building a queue of posts for scheduled publishing."
 ---
 

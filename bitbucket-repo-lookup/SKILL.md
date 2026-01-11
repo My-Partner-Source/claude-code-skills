@@ -1,5 +1,6 @@
 ---
 name: bitbucket-repo-lookup
+version: 1.0.0
 description: "Look up, list, and clone repositories from Bitbucket workspaces. Use when you need to explore available repositories, search by name/project, or download specific repos to your local machine."
 ---
 

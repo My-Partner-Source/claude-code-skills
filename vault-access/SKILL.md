@@ -1,7 +1,7 @@
 ---
 name: vault-access
-description: "Retrieve secrets from HashiCorp Vault. Supports KV v1/v2 engines, token authentication, and multiple paths. Use when user needs to fetch credentials, API keys, or other secrets stored in Vault. Requires VPN connectivity for internal Vault servers."
-version: 1.0.0
+description: "Retrieve secrets from HashiCorp Vault. Supports KV v1/v2 engines, token and AppRole authentication, and multiple environments (dev/qa/uat/prod). Use when user needs to fetch credentials, API keys, or other secrets stored in Vault. Requires VPN connectivity for internal Vault servers."
+version: 1.1.0
 ---
 
 # Vault Access
@@ -10,7 +10,9 @@ Retrieve secrets from HashiCorp Vault with environment-aware configuration.
 
 ## Key Behavior
 
-**Authentication**: Uses Vault token authentication (most common method).
+**Authentication**: Supports both token and AppRole authentication. AppRole login is automatic when credentials include `role_id` and `role_secret`.
+
+**Multi-Environment**: Use `--env dev|qa|uat|prod` to switch between Vault servers. Loads environment-specific credential files (`.credentials.dev`, `.credentials.qa`, etc.).
 
 **KV Engine Detection**: Automatically detects KV v1 vs v2 based on response or explicit configuration.
 
@@ -68,6 +70,10 @@ If missing, invoke `/credential-setup vault-access`.
 # Get a specific key from a secret
 ~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
 
+# Use a specific environment (dev, qa, uat, prod)
+~/.claude/skills/vault-access/scripts/vault_access.py --env dev get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py --env qa list secret/myapp/
+
 # List secrets in a path
 ~/.claude/skills/vault-access/scripts/vault_access.py list secret/myapp/
 
@@ -80,14 +86,15 @@ If missing, invoke `/credential-setup vault-access`.
 # Specify KV version explicitly
 ~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --kv-version 2
 
-# Check Vault connectivity
-~/.claude/skills/vault-access/scripts/vault_access.py status
+# Check Vault connectivity for a specific environment
+~/.claude/skills/vault-access/scripts/vault_access.py --env dev status
 ```
 
 ### Arguments
 
 | Argument | Description |
 |----------|-------------|
+| `--env`, `-e` | Environment: dev, qa, uat, prod (loads `.credentials.<env>`) |
 | `get <path>` | Retrieve secret(s) from path |
 | `list <path>` | List secrets in a path |
 | `status` | Check Vault connectivity and auth status |
@@ -172,14 +179,58 @@ HashiCorp Vault has two KV (Key-Value) engine versions:
 ## Configuration
 
 ### Credential Structure
+
+**Token Authentication:**
 ```
 VAULT_ADDR      - Vault server URL (required)
-VAULT_TOKEN     - Authentication token (required)
+VAULT_TOKEN     - Authentication token (required for token auth)
 VAULT_NAMESPACE - Enterprise namespace (optional)
 VAULT_SKIP_VERIFY - Skip TLS verification (optional, not recommended)
 ```
 
-### First-Time Setup
+**AppRole Authentication:**
+```
+VAULT_ADDR         - Vault server URL (required)
+VAULT_ROLE_ID      - AppRole role ID (required for AppRole auth)
+VAULT_ROLE_SECRET  - AppRole secret ID (required for AppRole auth)
+VAULT_NAMESPACE    - Enterprise namespace (optional)
+```
+
+**Java Properties Format (also supported):**
+```
+com.sandata.vault.server=vault.example.com
+com.sandata.vault.port=443
+com.sandata.vault.protocol=https
+com.sandata.vault.roleId=your-role-id
+com.sandata.vault.roleSecret=your-role-secret
+```
+
+### Environment-Specific Setup
+
+For multi-environment support, create separate credential files:
+
+```bash
+cd ~/.claude/skills/vault-access/references
+
+# DEV environment
+cp .credentials.example .credentials.dev
+# Edit with DEV Vault credentials
+
+# QA environment
+cp .credentials.example .credentials.qa
+# Edit with QA Vault credentials
+
+# Secure permissions
+chmod 600 .credentials.*
+```
+
+Then use `--env` flag:
+```bash
+vault_access.py --env dev get secret/myapp/database
+vault_access.py --env qa list secret/
+```
+
+### Single-Environment Setup
 ```bash
 cd vault-access/references
 cp .credentials.example .credentials
@@ -199,8 +250,8 @@ vault token create -ttl=8h
 1. Log into Vault UI
 2. Click user icon > Copy Token
 
-**Service accounts:**
-Contact your Vault administrator for AppRole or other service authentication.
+**AppRole (service accounts):**
+Contact your Vault administrator for AppRole credentials (role_id and secret_id).
 
 ---
 

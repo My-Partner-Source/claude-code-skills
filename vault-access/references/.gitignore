@@ -1,2 +1,6 @@
 # Protect actual credentials from being committed
 .credentials
+.credentials.dev
+.credentials.qa
+.credentials.uat
+.credentials.prod

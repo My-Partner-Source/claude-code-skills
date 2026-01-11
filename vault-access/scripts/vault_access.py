@@ -42,79 +42,218 @@ except ImportError:
 
 # Constants
 SKILL_DIR = Path(__file__).parent.parent
-CREDENTIALS_FILE = SKILL_DIR / "references" / ".credentials"
+CREDENTIALS_DIR = SKILL_DIR / "references"
 
-# Credential file search paths (in priority order)
-CREDENTIAL_PATHS = [
-    CREDENTIALS_FILE,
-    Path.home() / ".claude" / "skills" / "vault-access" / ".credentials",
-    Path(".credentials"),
-]
+# Supported environments
+VALID_ENVIRONMENTS = ["dev", "qa", "uat", "prod"]
 
 
-def load_credentials() -> dict:
-    """Load Vault credentials from .credentials file or environment."""
-    creds = {
-        "addr": os.environ.get("VAULT_ADDR"),
-        "token": os.environ.get("VAULT_TOKEN"),
-        "namespace": os.environ.get("VAULT_NAMESPACE", ""),
-        "skip_verify": os.environ.get("VAULT_SKIP_VERIFY", "false").lower() == "true",
-        "kv_version": os.environ.get("VAULT_KV_VERSION", "auto"),
-    }
+def get_credential_paths(env: str = None) -> list:
+    """Get credential file paths for the specified environment."""
+    if env:
+        # Environment-specific files
+        return [
+            CREDENTIALS_DIR / f".credentials.{env}",
+            Path.home() / ".claude" / "skills" / "vault-access" / f".credentials.{env}",
+        ]
+    else:
+        # Default credentials file
+        return [
+            CREDENTIALS_DIR / ".credentials",
+            Path.home() / ".claude" / "skills" / "vault-access" / ".credentials",
+            Path(".credentials"),
+        ]
 
-    # Try to load from credentials file if env vars not set
-    if not creds["addr"] or not creds["token"]:
-        creds_file = None
-        for path in CREDENTIAL_PATHS:
-            if path.exists():
-                creds_file = path
-                break
 
-        if creds_file:
-            with open(creds_file) as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
+def load_credentials(env: str = None) -> dict:
+    """Load Vault credentials from .credentials file or environment.
 
-                    # Parse: export VAR="value" or VAR="value"
-                    line = line.replace("export ", "")
-                    match = re.match(r'(\w+)=["\']?([^"\']*)["\']?', line)
-                    if match:
-                        key = match.group(1)
-                        value = match.group(2)
+    Supports two authentication methods:
+    1. Token-based: VAULT_ADDR + VAULT_TOKEN
+    2. AppRole: VAULT_ADDR + VAULT_ROLE_ID + VAULT_ROLE_SECRET
 
-                        if key == "VAULT_ADDR" and not creds["addr"]:
-                            creds["addr"] = value
-                        elif key == "VAULT_TOKEN" and not creds["token"]:
-                            creds["token"] = value
-                        elif key == "VAULT_NAMESPACE":
-                            creds["namespace"] = value
-                        elif key == "VAULT_SKIP_VERIFY":
-                            creds["skip_verify"] = value.lower() == "true"
-                        elif key == "VAULT_KV_VERSION":
-                            creds["kv_version"] = value
+    When --env is specified, the env-specific credential file takes precedence
+    over environment variables to allow switching between environments.
+    """
+    # When env is specified, start fresh (don't use env vars) to allow switching
+    if env:
+        creds = {
+            "addr": None,
+            "token": None,
+            "role_id": None,
+            "role_secret": None,
+            "namespace": "",
+            "skip_verify": False,
+            "kv_version": "auto",
+            "env": env,
+        }
+    else:
+        # Default behavior: environment variables take precedence
+        creds = {
+            "addr": os.environ.get("VAULT_ADDR"),
+            "token": os.environ.get("VAULT_TOKEN"),
+            "role_id": os.environ.get("VAULT_ROLE_ID"),
+            "role_secret": os.environ.get("VAULT_ROLE_SECRET"),
+            "namespace": os.environ.get("VAULT_NAMESPACE", ""),
+            "skip_verify": os.environ.get("VAULT_SKIP_VERIFY", "false").lower() == "true",
+            "kv_version": os.environ.get("VAULT_KV_VERSION", "auto"),
+            "env": env,
+        }
+
+    # Load from credentials file
+    credential_paths = get_credential_paths(env)
+    creds_file = None
+    for path in credential_paths:
+        if path.exists():
+            creds_file = path
+            break
+
+    if creds_file:
+        with open(creds_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                # Parse multiple formats:
+                # - export VAR="value"
+                # - VAR="value"
+                # - com.sandata.vault.key=value (Java properties style)
+                line = line.replace("export ", "")
+
+                # Try standard format first
+                match = re.match(r'(\w+)=["\']?([^"\']*)["\']?', line)
+                if match:
+                    key = match.group(1)
+                    value = match.group(2)
+
+                    if key == "VAULT_ADDR" and not creds["addr"]:
+                        creds["addr"] = value
+                    elif key == "VAULT_TOKEN" and not creds["token"]:
+                        creds["token"] = value
+                    elif key == "VAULT_ROLE_ID" and not creds["role_id"]:
+                        creds["role_id"] = value
+                    elif key == "VAULT_ROLE_SECRET" and not creds["role_secret"]:
+                        creds["role_secret"] = value
+                    elif key == "VAULT_NAMESPACE":
+                        creds["namespace"] = value
+                    elif key == "VAULT_SKIP_VERIFY":
+                        creds["skip_verify"] = value.lower() == "true"
+                    elif key == "VAULT_KV_VERSION":
+                        creds["kv_version"] = value
+                    continue
+
+                # Try Java properties format (com.sandata.vault.xxx=value)
+                prop_match = re.match(r'com\.sandata\.vault\.(\w+)=(.+)', line)
+                if prop_match:
+                    key = prop_match.group(1)
+                    value = prop_match.group(2)
+
+                    if key == "server":
+                        # Build full URL from server/port/protocol
+                        creds["_server"] = value
+                    elif key == "port":
+                        creds["_port"] = value
+                    elif key == "protocol":
+                        creds["_protocol"] = value
+                    elif key == "roleId" and not creds["role_id"]:
+                        creds["role_id"] = value
+                    elif key == "roleSecret" and not creds["role_secret"]:
+                        creds["role_secret"] = value
+
+    # Build VAULT_ADDR from Java properties if present
+    if not creds["addr"] and creds.get("_server"):
+        protocol = creds.get("_protocol", "https")
+        server = creds.get("_server")
+        port = creds.get("_port", "8200")
+        creds["addr"] = f"{protocol}://{server}:{port}"
+
+    # Clean up temp keys
+    for key in ["_server", "_port", "_protocol"]:
+        creds.pop(key, None)
 
     # Validate required credentials
+    env_suffix = f" for --env {env}" if env else ""
     if not creds["addr"]:
-        print("Error: VAULT_ADDR not configured")
+        print(f"Error: VAULT_ADDR not configured{env_suffix}")
+        if env:
+            print(f"\nCredential file not found: .credentials.{env}")
         print("\nTo set up credentials:")
         print("  1. Copy .credentials.example to .credentials")
-        print("  2. Fill in your Vault server URL and token")
+        print("  2. Fill in your Vault server URL and token/approle")
         print("  3. Or run: /credential-setup vault-access")
         sys.exit(1)
 
-    if not creds["token"]:
-        print("Error: VAULT_TOKEN not configured")
-        print("\nTo get a Vault token:")
-        print("  - CLI: vault login && vault token create")
-        print("  - UI: Log into Vault > Click user icon > Copy Token")
+    # Need either token or AppRole credentials
+    if not creds["token"] and not (creds["role_id"] and creds["role_secret"]):
+        print(f"Error: No authentication configured{env_suffix}")
+        print("\nProvide either:")
+        print("  - VAULT_TOKEN (token-based auth)")
+        print("  - VAULT_ROLE_ID + VAULT_ROLE_SECRET (AppRole auth)")
         sys.exit(1)
 
     # Normalize address (remove trailing slash)
     creds["addr"] = creds["addr"].rstrip("/")
 
     return creds
+
+
+def approle_login(creds: dict) -> str:
+    """Authenticate using AppRole and return a client token."""
+    url = f"{creds['addr']}/v1/auth/approle/login"
+
+    headers = {"Content-Type": "application/json"}
+    if creds.get("namespace"):
+        headers["X-Vault-Namespace"] = creds["namespace"]
+
+    verify = not creds.get("skip_verify", False)
+
+    payload = {
+        "role_id": creds["role_id"],
+        "secret_id": creds["role_secret"],
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, verify=verify, timeout=10)
+
+        if response.ok:
+            data = response.json()
+            return data.get("auth", {}).get("client_token")
+        else:
+            error_data = response.json() if response.text else {}
+            errors = error_data.get("errors", ["Unknown error"])
+            print(f"Error: AppRole login failed - {'; '.join(errors)}")
+            sys.exit(1)
+
+    except requests.exceptions.SSLError as e:
+        print(f"SSL Error during AppRole login: {e}")
+        print("\nIf using self-signed certificates, set VAULT_SKIP_VERIFY=true")
+        sys.exit(1)
+
+    except requests.exceptions.ConnectionError:
+        print(f"Connection Error: Could not connect to {creds['addr']}")
+        print("\nPossible causes:")
+        print("  - VPN not connected (run /vpn-check)")
+        print("  - Incorrect VAULT_ADDR")
+        print("  - Vault server is down")
+        sys.exit(1)
+
+
+def ensure_token(creds: dict) -> dict:
+    """Ensure credentials have a valid token, using AppRole login if needed."""
+    if creds.get("token"):
+        return creds
+
+    if creds.get("role_id") and creds.get("role_secret"):
+        env_msg = f" ({creds['env']})" if creds.get("env") else ""
+        print(f"Authenticating via AppRole{env_msg}...", file=sys.stderr)
+        token = approle_login(creds)
+        if token:
+            creds["token"] = token
+            return creds
+
+    print("Error: No valid authentication method available")
+    sys.exit(1)
 
 
 def make_request(creds: dict, method: str, path: str, data: dict = None) -> dict:
@@ -410,9 +549,17 @@ Examples:
   %(prog)s get secret/myapp/database
   %(prog)s get secret/myapp/database --key password
   %(prog)s get secret/myapp/database --show
-  %(prog)s list secret/myapp/
-  %(prog)s status
+  %(prog)s --env dev get secret/myapp/database
+  %(prog)s --env qa list secret/myapp/
+  %(prog)s --env dev status
         """,
+    )
+
+    # Global arguments
+    parser.add_argument(
+        "--env", "-e",
+        choices=VALID_ENVIRONMENTS,
+        help="Environment to use (dev, qa, uat, prod). Loads .credentials.<env> file.",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -450,13 +597,17 @@ Examples:
         parser.print_help()
         sys.exit(1)
 
-    # Load credentials
-    creds = load_credentials()
+    # Load credentials for specified environment
+    creds = load_credentials(args.env)
+
+    # Ensure we have a valid token (handles AppRole login if needed)
+    creds = ensure_token(creds)
 
     if args.command == "status":
         status = check_status(creds)
 
-        print(f"\nVault Status: {creds['addr']}")
+        env_label = f" [{args.env.upper()}]" if args.env else ""
+        print(f"\nVault Status{env_label}: {creds['addr']}")
         print("-" * 50)
 
         if not status["connected"]:

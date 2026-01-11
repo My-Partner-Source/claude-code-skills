@@ -1,5 +1,6 @@
 ---
 name: code-journey-documenter
+version: 1.0.0
 description: "Document coding sessions and learnings for the book 'Code With Claude: How AI Transformed the Way I Work (And Think).' Use this skill when (1) recording a coding session for a book chapter, (2) transforming raw session logs into narrative content, (3) capturing iterations, failures, and breakthroughs during Claude Code work, (4) generating chapter outlines from job experiences, or (5) creating meta-reflections on the book-writing process itself."
 ---
 

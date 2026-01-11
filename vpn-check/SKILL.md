@@ -1,5 +1,6 @@
 ---
 name: vpn-check
+version: 1.0.0
 description: "Check VPN connectivity by verifying internal DNS resolution. Use standalone to verify VPN status, or as a prerequisite for skills requiring internal network access (e.g., bitbucket-repo-lookup). Auto-prompts for configuration on first run."
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: credential-setup
+version: 1.0.0
 description: "Interactive credential setup helper. Automatically invoked when skills need credentials but .credentials file doesn't exist. Parses .credentials.example templates and prompts users for values. Use when: (1) A skill reports missing credentials, (2) User wants to set up credentials for a skill, (3) .credentials file needs to be created or regenerated."
 ---
 

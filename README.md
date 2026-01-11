@@ -502,7 +502,7 @@ See `mysql-query-runner/SKILL.md` for complete documentation.
 
 ## Vault Access
 
-Retrieve secrets from HashiCorp Vault with KV v1/v2 engine support and secure credential handling.
+Retrieve secrets from HashiCorp Vault with KV v1/v2 engine support, multi-environment switching, and secure credential handling.
 
 ### Core Philosophy
 
@@ -524,7 +524,7 @@ Secrets should be managed securely and accessed programmatically. This skill con
    ```bash
    cd ~/.claude/skills/vault-access/references
    cp .credentials.example .credentials
-   # Edit with your Vault address and token
+   # Edit with your Vault address and token/approle
    chmod 600 .credentials
    ```
 
@@ -539,6 +539,7 @@ Secrets should be managed securely and accessed programmatically. This skill con
 
 | Command | Description |
 |---------|-------------|
+| `--env <env>` | Switch environment: dev, qa, uat, prod |
 | `get <path>` | Retrieve secret(s) from a path |
 | `list <path>` | List secrets at a path |
 | `status` | Check Vault connectivity and auth status |
@@ -548,6 +549,10 @@ Secrets should be managed securely and accessed programmatically. This skill con
 ```bash
 # Get all keys from a secret
 ~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database
+
+# Use a specific environment (loads .credentials.dev, .credentials.qa, etc.)
+~/.claude/skills/vault-access/scripts/vault_access.py --env dev get secret/myapp/database
+~/.claude/skills/vault-access/scripts/vault_access.py --env qa list secret/myapp/
 
 # Get a specific key
 ~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --key password
@@ -562,6 +567,16 @@ Secrets should be managed securely and accessed programmatically. This skill con
 ~/.claude/skills/vault-access/scripts/vault_access.py get secret/myapp/database --format env
 ```
 
+### Multi-Environment Setup
+
+Create environment-specific credential files for easy switching:
+```bash
+cd ~/.claude/skills/vault-access/references
+cp .credentials.example .credentials.dev   # DEV Vault
+cp .credentials.example .credentials.qa    # QA Vault
+chmod 600 .credentials.*
+```
+
 ### Output Formats
 
 | Format | Use Case |
@@ -574,9 +589,10 @@ Secrets should be managed securely and accessed programmatically. This skill con
 ### Security Features
 
 - **Masked by default** — Secret values shown as `ab****cd`
-- **Token authentication** — Uses Vault tokens (short-lived preferred)
+- **Token & AppRole auth** — Supports both token and AppRole authentication
 - **No logging** — Secrets never written to logs
 - **File permissions** — `.credentials` set to 600 (owner only)
+- **Env isolation** — `--env` flag ignores shell env vars for clean switching
 
 See `vault-access/SKILL.md` for complete documentation.
 
