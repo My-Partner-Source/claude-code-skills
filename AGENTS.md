@@ -18,6 +18,7 @@ This file provides AI coding assistants with essential context about the codebas
 10. **sftp-access** - Access remote SFTP servers for file transfer and management operations
 11. **redis-access** - Access Redis databases with multi-environment support and comprehensive data type operations
 12. **aws-sso-env-switcher** - Switch between AWS environments (DEV/QA/UAT/PROD) using AWS SSO with kubectl integration for EKS clusters
+13. **rabbitmq-queue-monitor** - Monitor RabbitMQ queues and health across LOCAL/DEV/QA/UAT/PROD environments
 
 This is **not a traditional monolithic application**. Instead, it's a skill marketplace where each skill is independently functional yet follows consistent organizational patterns. Skills are designed for integration with AI-assisted development tools and can be invoked individually.
 
@@ -40,7 +41,7 @@ This is **not a traditional monolithic application**. Instead, it's a skill mark
 
 **Dependencies:**
 - Python 3 standard library (all skills)
-- `requests` library (bitbucket-repo-lookup, datadog-api)
+- `requests` library (bitbucket-repo-lookup, datadog-api, rabbitmq-queue-monitor)
 
 ---
 
@@ -169,15 +170,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── redis_access.py               # Redis access wrapper (15KB)
 │
-└── aws-sso-env-switcher/
+├── aws-sso-env-switcher/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup script
+│   ├── requirements.txt                  # Python dependencies (boto3)
+│   ├── references/
+│   │   ├── .credentials.example          # AWS SSO and EKS cluster config template
+│   │   └── .gitignore                    # Protects .credentials
+│   └── scripts/
+│       └── aws_sso_env.py                # AWS SSO environment switcher (18KB)
+│
+└── rabbitmq-queue-monitor/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup script
-    ├── requirements.txt                  # Python dependencies (boto3)
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
-    │   ├── .credentials.example          # AWS SSO and EKS cluster config template
+    │   ├── .credentials.example          # RabbitMQ credentials template
     │   └── .gitignore                    # Protects .credentials
     └── scripts/
-        └── aws_sso_env.py                # AWS SSO environment switcher (18KB)
+        └── rabbitmq_monitor.py           # RabbitMQ queue monitor (18KB)
 ```
 
 ---
@@ -198,6 +209,7 @@ claude-code-skills/
 | **sftp-access** | Access SFTP servers, upload/download files | `sftp_access.py`<br>`.credentials.example` | `/sftp-access` |
 | **redis-access** | Access Redis with multi-env support | `redis_access.py`<br>`.credentials.example` | `/redis-access` |
 | **aws-sso-env-switcher** | Switch AWS environments with SSO, run kubectl | `aws_sso_env.py`<br>`.credentials.example` | `/aws-sso-env-switcher` |
+| **rabbitmq-queue-monitor** | Monitor RabbitMQ queues and health | `rabbitmq_monitor.py`<br>`.credentials.example` | `/rabbitmq-queue-monitor` |
 
 ---
 
@@ -1025,6 +1037,78 @@ AWS_{ENV}_NAMESPACE       - Default namespace (optional)
 
 ---
 
+### rabbitmq_monitor.py (rabbitmq-queue-monitor)
+
+Monitor RabbitMQ queues and health across LOCAL/DEV/QA/UAT/PROD environments using the Management HTTP API.
+
+**One-time setup** (creates virtual environment and installs requests):
+```bash
+cd ~/.claude/skills/rabbitmq-queue-monitor && bash setup.sh
+```
+
+```bash
+# Server overview
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV overview
+
+# Health check
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV health
+
+# List all queues
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV queues
+
+# List queues with message backlog
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD queues --backlog
+
+# Filter queues by name
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env QA queues --filter "order"
+
+# Get specific queue details with rates
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env UAT queue my-queue-name --rates
+
+# List connections/channels/consumers
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV connections
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV channels
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV consumers
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `overview` | Get server overview (version, cluster, totals) |
+| `health` | Check health status and alarms |
+| `nodes` | Get cluster node status |
+| `queues` | List all queues with message counts |
+| `queue <name>` | Get specific queue details |
+| `connections` | List active connections |
+| `channels` | List active channels |
+| `consumers` | List active consumers |
+| `exchanges` | List exchanges |
+| `bindings <queue>` | List bindings for a queue |
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `--env`, `-e` | Target: LOCAL, DEV, QA, UAT, PROD |
+| `--format`, `-f` | Output: text (default), json |
+| `--output`, `-o` | Write results to file |
+| `--vhost` | RabbitMQ vhost (default: from config) |
+| `--filter` | Filter queues by name pattern |
+| `--backlog` | Show only queues with messages > 0 |
+| `--rates` | Include message rates (queue command) |
+| `--show-config` | Display connection settings |
+
+**Credential Resolution** (priority order):
+1. Environment variables (`RABBITMQ_{ENV}_HOST`, `RABBITMQ_{ENV}_PORT`, etc.)
+2. `.credentials` file (auto-parsed from `rabbitmq-queue-monitor/references/.credentials`)
+
+**Exit codes:**
+- `0` = success
+- `1` = error
+
+---
+
 ## bitbucket-repo-lookup Implementation Details
 
 **Critical for future development and debugging.**
@@ -1649,6 +1733,10 @@ When contributing to this repository:
 | Check AWS SSO status | `~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py status` |
 | Switch AWS environment | `~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py switch --env DEV` |
 | Run kubectl in env | `~/.claude/skills/aws-sso-env-switcher/scripts/aws_sso_env.py kubectl --env PROD -- get pods` |
+| RabbitMQ overview | `~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV overview` |
+| List RabbitMQ queues | `~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV queues` |
+| RabbitMQ queue backlog | `~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD queues --backlog` |
+| RabbitMQ queue details | `~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env QA queue my-queue --rates` |
 
 ### Configuration Files
 
@@ -1666,6 +1754,7 @@ When contributing to this repository:
 | sftp-access | `references/.credentials` | SFTP host, username, password/SSH key |
 | redis-access | `references/.credentials` | Redis host, port, password for DEV/QA/UAT/PROD |
 | aws-sso-env-switcher | `references/.credentials` | AWS SSO config and EKS cluster details per env |
+| rabbitmq-queue-monitor | `references/.credentials` | RabbitMQ host, port, credentials for LOCAL/DEV/QA/UAT/PROD |
 
 ### Important Files
 
@@ -1679,11 +1768,21 @@ When contributing to this repository:
 
 ---
 
-**Last Updated:** 2026-01-10
-**Version:** 1.11.0
+**Last Updated:** 2026-01-11
+**Version:** 1.12.0
 **Maintained by:** David Rutgos
 
-**Recent Changes (2026-01-10 v1.11.0):**
+**Recent Changes (2026-01-11 v1.12.0):**
+- Added rabbitmq-queue-monitor skill for RabbitMQ monitoring
+- Multi-environment support (LOCAL/DEV/QA/UAT/PROD)
+- Queue message counts, consumer status, and health checks
+- Server overview, node status, connections, channels monitoring
+- Exchange and binding inspection
+- Filter queues by name pattern or backlog (messages > 0)
+- Message rate tracking for individual queues
+- Credential auto-loading from .credentials file
+
+**Previous Changes (2026-01-10 v1.11.0):**
 - Added redis-access skill for Redis database operations
 - Multi-environment support (DEV/QA/UAT/PROD)
 - Comprehensive data type support (strings, hashes, lists, sets, sorted sets)
