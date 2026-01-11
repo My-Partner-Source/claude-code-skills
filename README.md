@@ -22,6 +22,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
 | [sftp-access](#sftp-access) | Access remote SFTP servers for file operations | `/sftp-access` |
 | [redis-access](#redis-access) | Access Redis databases with multi-env support | `/redis-access` |
 | [aws-sso-env-switcher](#aws-sso-env-switcher) | Switch AWS environments with SSO and kubectl | `/aws-sso-env-switcher` |
+| [rabbitmq-queue-monitor](#rabbitmq-queue-monitor) | Monitor RabbitMQ queues and health | `/rabbitmq-queue-monitor` |
 
 ## Installation
 
@@ -48,6 +49,7 @@ A collection of Claude Code skills to streamline your development workflow: docu
    cp -r sftp-access ~/.claude/skills/
    cp -r redis-access ~/.claude/skills/
    cp -r aws-sso-env-switcher ~/.claude/skills/
+   cp -r rabbitmq-queue-monitor ~/.claude/skills/
 
    # Or install all skills at once
    for skill in */; do
@@ -1133,6 +1135,117 @@ See `aws-sso-env-switcher/SKILL.md` for complete documentation.
 
 ---
 
+## RabbitMQ Queue Monitor
+
+Monitor RabbitMQ queues and health across LOCAL/DEV/QA/UAT/PROD environments using the Management HTTP API.
+
+### Core Philosophy
+
+Get visibility into your RabbitMQ message queues without context switching. Check queue depths, consumer status, and server health from your development environment.
+
+### Quick Start
+
+1. **Verify VPN Connection** (if internal RabbitMQ):
+   ```
+   /vpn-check
+   ```
+
+2. **Install Dependencies** (creates virtual environment):
+   ```bash
+   cd ~/.claude/skills/rabbitmq-queue-monitor && bash setup.sh
+   ```
+
+3. **Set Up Credentials**:
+   ```bash
+   cd ~/.claude/skills/rabbitmq-queue-monitor/references
+   cp .credentials.example .credentials
+   # Edit with your RabbitMQ Management API credentials
+   chmod 600 .credentials
+   ```
+
+4. **Monitor Queues**:
+   ```
+   "Check the RabbitMQ health in DEV"
+   "How many messages are in the order queue in QA?"
+   "Show me queues with backlog in PROD"
+   ```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `overview` | Get server overview (version, cluster, totals) |
+| `health` | Check health status and alarms |
+| `nodes` | Get cluster node status |
+| `queues` | List all queues with message counts |
+| `queue <name>` | Get specific queue details |
+| `connections` | List active connections |
+| `channels` | List active channels |
+| `consumers` | List active consumers |
+| `exchanges` | List exchanges |
+| `bindings <queue>` | List bindings for a queue |
+
+### Script Usage
+
+```bash
+# Server overview
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV overview
+
+# Health check
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV health
+
+# List all queues
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV queues
+
+# List queues with message backlog
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD queues --backlog
+
+# Filter queues by name
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env QA queues --filter "order"
+
+# Get specific queue with message rates
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env UAT queue my-queue-name --rates
+
+# Export to JSON
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env DEV queues --format json --output queues.json
+```
+
+### Common Use Cases
+
+**Check for Message Backlog:**
+```bash
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD queues --backlog
+```
+
+**Monitor Specific Queue:**
+```bash
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env UAT queue order-processing --rates
+```
+
+**Health Check Before Deployment:**
+```bash
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD health
+~/.claude/skills/rabbitmq-queue-monitor/scripts/rabbitmq_monitor.py --env PROD nodes
+```
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `text` (default) | Clean tables for chat display |
+| `json` | Programmatic processing or export |
+
+### Notes
+
+- Uses the RabbitMQ Management HTTP API (default port 15672)
+- Requires the RabbitMQ Management plugin to be enabled
+- All operations are read-only (no queue modifications)
+- SSL/TLS is supported via `RABBITMQ_{ENV}_SSL="true"`
+
+See `rabbitmq-queue-monitor/SKILL.md` for complete documentation.
+
+---
+
 ## Configuration
 
 Each skill has its own configuration file. Edit the `references/config.md` file in each skill directory to customize paths and settings.
@@ -1155,6 +1268,7 @@ Each skill has its own configuration file. Edit the `references/config.md` file 
 | sftp-access | `~/.claude/skills/sftp-access/references/.credentials` |
 | redis-access | `~/.claude/skills/redis-access/references/.credentials` |
 | aws-sso-env-switcher | `~/.claude/skills/aws-sso-env-switcher/references/.credentials` |
+| rabbitmq-queue-monitor | `~/.claude/skills/rabbitmq-queue-monitor/references/.credentials` |
 
 ### Directory Structure (Book)
 
@@ -1328,15 +1442,25 @@ claude-code-skills/
 │   └── scripts/
 │       └── redis_access.py               # Redis access wrapper
 │
-└── aws-sso-env-switcher/
+├── aws-sso-env-switcher/
+│   ├── SKILL.md                          # Skill definition
+│   ├── setup.sh                          # Virtual environment setup
+│   ├── requirements.txt                  # Python dependencies (boto3)
+│   ├── references/
+│   │   ├── .credentials.example          # AWS SSO and EKS config template
+│   │   └── .gitignore                    # Protects credentials
+│   └── scripts/
+│       └── aws_sso_env.py                # AWS SSO environment switcher
+│
+└── rabbitmq-queue-monitor/
     ├── SKILL.md                          # Skill definition
     ├── setup.sh                          # Virtual environment setup
-    ├── requirements.txt                  # Python dependencies (boto3)
+    ├── requirements.txt                  # Python dependencies (requests)
     ├── references/
-    │   ├── .credentials.example          # AWS SSO and EKS config template
+    │   ├── .credentials.example          # RabbitMQ credentials template
     │   └── .gitignore                    # Protects credentials
     └── scripts/
-        └── aws_sso_env.py                # AWS SSO environment switcher
+        └── rabbitmq_monitor.py           # RabbitMQ queue monitor
 ```
 
 ---
